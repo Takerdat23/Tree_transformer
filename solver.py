@@ -347,7 +347,7 @@ class Solver():
 
             combined_accuracy = (aspect + sentiment) / 2
             if (self.args.wandb_api != ""):
-                wandb.log({"Validation Accuracy": combined_accuracy}, step=epoch)
+                wandb.log({"Validation Accuracy": combined_accuracy})
            
                     
                 
