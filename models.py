@@ -163,7 +163,91 @@ class EncoderLayer(nn.Module):
 
     
         return x, group_prob, break_prob
+
+
+class BaseEncoderLayer(nn.Module):
+    "Encoder is made up of self-attn and feed forward (defined below)"
+    def __init__(self, size, self_attn, feed_forward, vocab_size ,  dropout):
+        super(BaseEncoderLayer, self).__init__()
+        self.self_attn = self_attn
+        self.feed_forward = feed_forward
+        self.sublayer = clones(SublayerConnection(size, dropout), 2)
+        self.size = size
+        # self.selfoutput = SelfOutputLayer(dropout, size, size )
+        
+
+    def forward(self, x, mask):
+  
     
+        x = self.sublayer[0](x, lambda x: self.self_attn(x, x, x,  mask= mask))
+ 
+        x = self.sublayer[1](x, self.feed_forward)
+
+    
+        return x
+
+
+
+class BaseEncoder(nn.Module):
+    def __init__(self, layer, N, d_model, vocab_size, word_embed, dropout):
+        super(BaseEncoder, self).__init__()
+        self.word_embed = word_embed
+        self.layers = clones(layer, N)
+        self.intermidiate = IntermidiateOutput( d_model, vocab_size)
+        self.output = EncoderOutputLayer(dropout, vocab_size, d_model)
+        
+        
+
+    def forward(self, inputs, mask):
+    
+        hidden_states =[]
+    
+        x = self.word_embed(inputs)
+
+        for layer in self.layers:
+            x = layer(x, mask)
+            hidden_states.append(x)
+        
+
+       
+        x= self.intermidiate(x)
+       
+   
+        return x, hidden_states
+
+
+    def masked_lm_loss(self, out, y):
+        fn = CrossEntropyLoss(ignore_index=-1)
+        return fn(out.view(-1, out.size()[-1]), y.view(-1))
+
+
+    def next_sentence_loss(self):
+        pass
+
+
+class ABSA_transfomer(nn.Module): 
+    def __init__(self, vocab_size, N=12, d_model=768, d_ff=2048, h=12, dropout=0.1, num_categories= 10, no_cuda= False):
+        super(ABSA_transfomer, self).__init__()
+        "Helper: Construct a model from hyperparameters."
+        self.no_cuda=  no_cuda
+        self.c = copy.deepcopy
+        attn = MultiHeadedAttention(h, d_model, no_cuda=self.no_cuda)
+        ff = PositionwiseFeedForward(d_model, d_ff, dropout)
+        position = PositionalEncoding(d_model, 128)
+        word_embed = nn.Sequential(Embeddings(d_model, vocab_size), self.c(position))
+        self.encoder = BaseEncoder(BaseEncoderLayer(d_model, self.c(attn), self.c(ff), vocab_size, dropout), 
+                    N, d_model, vocab_size, self.c(word_embed),  dropout)
+        self.outputHead = Aspect_Based_SA_Output(dropout , d_model, 4, num_categories ) # 4 class label
+
+        
+        
+
+    def forward(self, inputs, mask, categories):
+        _, hiddenStates = self.encoder.forward(inputs, mask)
+        
+        output = self.outputHead.forward(hiddenStates, categories )
+        return output
+
 
 
 class ABSA_Tree_transfomer(nn.Module): 

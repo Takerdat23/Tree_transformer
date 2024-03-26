@@ -2,3 +2,6 @@ parse
 nltk
 datasets
 transformers
+nltk
+scikit-learn
+wandb

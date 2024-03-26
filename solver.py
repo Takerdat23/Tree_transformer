@@ -19,8 +19,7 @@ class Solver():
 
         self.model_dir = make_save_dir(args.model_dir)
         self.no_cuda = args.no_cuda
-        if not os.path.exists(os.path.join(self.model_dir,'code')):
-            os.makedirs(os.path.join(self.model_dir,'code'))
+   
     
         if args.wandb_api != "": 
 
@@ -33,22 +32,31 @@ class Solver():
 
         df_train = pd.read_csv(self.args.train_path,  encoding = 'utf8')
         df_val = pd.read_csv(self.args.valid_path,  encoding = 'utf8')
+        # df_test = pd.read_csv(self.args.test_path,  encoding = 'utf8')
 
 
         
         # data_utils_holder = data_utils(self.args)
         # data_yielder = data_utils_holder.train_data_yielder()
         self.categories = get_categories(df_train)
+        # self.test_categories = get_categories(df_test)
         dataset = process_data(df_train, self.categories)
         val_dataset =  process_data(df_val, self.categories)
+        # test_dataset =  process_data(df_test, self.test_categories)
         data_collator = SentimentDataCollator(self.tokenizer)
         self.train_loader = DataLoader(dataset, batch_size=self.args.batch_size, collate_fn=data_collator)
         self.val_loader =DataLoader(val_dataset, batch_size=self.args.batch_size, collate_fn=data_collator)
-      
-        self.model = ABSA_Tree_transfomer( vocab_size= self.tokenizer.vocab_size, N= 12, d_model= 768, 
+        # self.test_loader =DataLoader(test_dataset, batch_size=self.args.batch_size, collate_fn=data_collator)
+        self.model = ABSA_transfomer( vocab_size= self.tokenizer.vocab_size, N= 12, d_model= 768, 
                                           d_ff= 2048, h= 12, dropout = 0.1, num_categories = len(self.categories) , 
                                           no_cuda=args.no_cuda)
+        
+       
 
+        if self.args.load: 
+            self.LoadPretrain()
+            print(self.model)
+        
 
      
 
@@ -58,159 +66,14 @@ class Solver():
     def ModelSummary(self): 
         print(self.model)
     
-    def LoadPretrain(self, model_dir): 
-        path = os.path.join(model_dir, 'model.pth')
-        return self.model.load_state_dict(torch.load(path)['state_dict'])
+    def LoadPretrain(self): 
+        path = os.path.join(self.args.model_dir)
+        return self.model.load_state_dict(torch.load(path)['model_state_dict'])
     
-    # def evaluate_f1_accuracy(self):
-    #     if self.args.no_cuda == False:
-    #         device = "cuda"
-    #     else:
-    #         device = "cpu"
-        
-    #     self.model.to(device)
-    #     self.model.eval()
-        
-    #     all_predictions = []
-    #     all_ground_truth = []
-        
-    #     with torch.no_grad():
-    #         for step, batch in tqdm(enumerate(self.val_loader)):
-    #             inputs = batch['input_ids'].to(device)
-    #             mask = batch['attention_mask'].to(device)
-    #             labels = batch['labels'].to(device)
+  
 
-    #             output = self.model(inputs, mask, self.categories)
-
-    #             output = torch.sigmoid(output)
-    #             output = output.float()
-    #             labels = labels.float()
-                
-    #             # Convert probabilities to binary predictions
-    #             predictions = torch.argmax(output, dim=2)
-    #             ground_truth = torch.argmax(labels, dim=2)
-                
-    #             # Flatten predictions and ground truth tensors
-    #             predictions_flat = predictions.view(-1).cpu().numpy()
-    #             ground_truth_flat = ground_truth.view(-1).cpu().numpy()
-                
-    #             all_predictions.extend(predictions_flat)
-    #             all_ground_truth.extend(ground_truth_flat)
-        
-    #     # Compute F1 score
-    #     f1_accuracy = f1_score(all_ground_truth, all_predictions, average='weighted')
-        
-    #     return f1_accuracy
     
     def evaluate(self):
-        if self.args.no_cuda == False: 
-            device = "cuda"
-        else:
-            device = "cpu"
-
-        self.model.to(device)
-        self.model.eval()
-        aspect_true = []
-        aspect_pred = []
-        sentiment_true = []
-        sentiment_pred = []
-
-        with torch.no_grad():
-            for batch in self.val_loader:
-                inputs = batch['input_ids'].to(device)
-                mask = batch['attention_mask'].to(device)
-                labels = batch['labels'].to(device)
-
-                output = self.model(inputs, mask, self.categories)
-
-                output = torch.sigmoid(output)
-                output = output.float()
-                labels = labels.float()
-
-                # Iterate over each category
-                for category_index in range(output.shape[1]):
-                    # Extract aspect labels and predictions
-                    aspect_labels = torch.argmax(labels, dim=2)
-                    aspect_predictions = torch.argmax(output[:, :, :3], dim=2) 
-                 
-                   
-                    # Extract sentiment labels and predictions
-                    sentiment_labels = labels[:, category_index, :].argmax(axis=1)  # Extract sentiment labels correctly
-                    sentiment_predictions = output[:, category_index, :].argmax(axis=1)
-                   
-
-
-                    # Extend lists
-                    aspect_true.extend(aspect_labels)
-                    aspect_pred.extend(aspect_predictions)
-                    sentiment_true.extend(sentiment_labels)
-                    sentiment_pred.extend(sentiment_predictions)
-
-   
-        aspect_accuracy = accuracy_score(aspect_true, aspect_pred)
-        sentiment_accuracy = accuracy_score(sentiment_true, sentiment_pred)
-        Total = (aspect_accuracy + sentiment_accuracy)/2
-
-        return Total, aspect_accuracy, sentiment_accuracy
-
-    def evaluate_aspect_sentiment_accuracy(self):
-        if self.args.no_cuda == False:
-            device = "cuda"
-        else:
-            device = "cpu"
-        
-        self.model.to(device)
-        self.model.eval()
-        
-        all_aspect_predictions = []
-        all_sentiment_predictions = []
-        all_aspect_ground_truth = []
-        all_sentiment_ground_truth = []
-        
-        with torch.no_grad():
-            for step, batch in enumerate(self.val_loader):
-                inputs = batch['input_ids'].to(device)
-                mask = batch['attention_mask'].to(device)
-                labels = batch['labels'].to(device)
-
-                output = self.model(inputs, mask, self.categories)
-
-                output = torch.sigmoid(output)
-                output = output.float()
-                labels = labels.float()
-                
-                predictions = (output > 0.5).long()  
-              
-                
-                aspect_predictions = predictions[:, :, 0]  # Extract aspect predictions
-                
-                sentiment_predictions = predictions[:, :, 1:]  # Extract sentiment predictions
-                
-                ground_truth = labels[:, :, 0]  # Extract aspect ground truth
-              
-                sentiment_ground_truth = labels[:, :, 1:]  # Extract sentiment ground truth
-           
-                
-                
-                aspect_predictions_flat = aspect_predictions.view(-1).cpu().numpy()
-                sentiment_predictions_flat = sentiment_predictions.view(-1, 3).cpu().numpy()  # Assuming there are 3 sentiment labels
-                
-                aspect_ground_truth_flat = ground_truth.view(-1).cpu().numpy()
-                sentiment_ground_truth_flat = sentiment_ground_truth.view(-1, 3).cpu().numpy()  # Assuming there are 3 sentiment labels
-                
-                all_aspect_predictions.extend(aspect_predictions_flat)
-                all_aspect_ground_truth.extend(aspect_ground_truth_flat)
-                
-                all_sentiment_predictions.extend(sentiment_predictions_flat)
-                all_sentiment_ground_truth.extend(sentiment_ground_truth_flat)
-        
-        aspect_accuracy = accuracy_score(all_aspect_ground_truth, all_aspect_predictions)
-        sentiment_accuracy = accuracy_score(all_sentiment_ground_truth, all_sentiment_predictions)
-        
-        return aspect_accuracy, sentiment_accuracy
-    
-
-    def evaluate_aspect_sentiment_accuracy2(self):
         if self.args.no_cuda == False:
             device = "cuda"
         else:
@@ -255,6 +118,67 @@ class Solver():
         sentiment_accuracy = accuracy_score(all_sentiment_ground_truth.flatten(), all_sentiment_predictions.flatten())
 
         return aspect_accuracy, sentiment_accuracy
+    
+    def test(self):
+        if self.args.no_cuda == False:
+            device = "cuda"
+        else:
+            device = "cpu"
+
+        self.model.to(device)
+        self.model.eval()
+
+        all_aspect_predictions = []
+        all_sentiment_predictions = []
+        all_aspect_ground_truth = []
+        all_sentiment_ground_truth = []
+
+        with torch.no_grad():
+            for step, batch in enumerate(self.val_loader):
+                inputs = batch['input_ids'].to(device)
+                mask = batch['attention_mask'].to(device)
+                labels = batch['labels'].to(device)
+
+                output = self.model(inputs, mask, self.categories)
+
+                output = torch.sigmoid(output)
+                output = output.float()
+
+                aspect_predictions = (output[:, :, 0] > 0.5).long()
+                sentiment_predictions = (output[:, :, 1:] > 0.5).long()
+
+                aspect_ground_truth = labels[:, :, 0].long()
+                sentiment_ground_truth = labels[:, :, 1:].long()
+
+                all_aspect_predictions.append(aspect_predictions.cpu().numpy())
+                all_sentiment_predictions.append(sentiment_predictions.cpu().numpy())
+                all_aspect_ground_truth.append(aspect_ground_truth.cpu().numpy())
+                all_sentiment_ground_truth.append(sentiment_ground_truth.cpu().numpy())
+
+        all_aspect_predictions = np.concatenate(all_aspect_predictions)
+        all_sentiment_predictions = np.concatenate(all_sentiment_predictions)
+        all_aspect_ground_truth = np.concatenate(all_aspect_ground_truth)
+        all_sentiment_ground_truth = np.concatenate(all_sentiment_ground_truth)
+
+        aspect_precision = precision_score(all_aspect_ground_truth.flatten(), all_aspect_predictions.flatten())
+        aspect_recall = recall_score(all_aspect_ground_truth.flatten(), all_aspect_predictions.flatten())
+        aspect_f1 = f1_score(all_aspect_ground_truth.flatten(), all_aspect_predictions.flatten())
+
+        sentiment_precision = precision_score(all_sentiment_ground_truth.flatten(), all_sentiment_predictions.flatten(), average='weighted')
+        sentiment_recall = recall_score(all_sentiment_ground_truth.flatten(), all_sentiment_predictions.flatten(), average='weighted')
+        sentiment_f1 = f1_score(all_sentiment_ground_truth.flatten(), all_sentiment_predictions.flatten(), average='weighted')
+
+        print("Aspect Precision:", aspect_precision)
+        print("Aspect Recall:", aspect_recall)
+        print("Aspect F1 Score:", aspect_f1)
+
+        print("Sentiment Precision:", sentiment_precision)
+        print("Sentiment Recall:", sentiment_recall)
+        print("Sentiment F1 Score:", sentiment_f1)
+
+        return aspect_precision, aspect_recall, aspect_f1, sentiment_precision, sentiment_recall, sentiment_f1
+
+   
     
     def save_model(self, model, optimizer, epoch, step, model_dir):
         model_name = f'model_epoch_{epoch}_step_{step}.pth'
@@ -340,13 +264,14 @@ class Solver():
                     # print(f"Epoch {epoch} Validation accuracy (Sentiment): ", sentiment)
             epoch_progress.close()
             #Valid stage 
-            aspect , sentiment = self.evaluate_aspect_sentiment_accuracy2()
+            aspect , sentiment = self.evaluate()
                
             print(f"Epoch {epoch} Validation accuracy (Aspect): ", aspect)
             print(f"Epoch {epoch} Validation accuracy (Sentiment): ", sentiment)
 
             combined_accuracy = (aspect + sentiment) / 2
             if (self.args.wandb_api != ""):
+              
                 wandb.log({"Validation Accuracy": combined_accuracy}, step=epoch)
            
                     
