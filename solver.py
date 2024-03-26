@@ -238,7 +238,7 @@ class Solver():
         start = time.time()
         
         for epoch in tqdm(range(self.args.epoch)):
-            epoch_progress = tqdm(total=len(self.train_loader), desc=f'Epoch {epoch+1}/{self.args.epoch}', position=0)
+            epoch_progress = tqdm(total=len(self.data_util.train_loader), desc=f'Epoch {epoch+1}/{self.args.epoch}', position=0)
 
             for step, batch in enumerate(self.data_util.train_loader):
                 inputs = batch['input_ids'].to(device)
@@ -262,13 +262,13 @@ class Solver():
                 loss.backward()
                 optim.step()
                 if (self.args.wandb_api != ""):
-                    wandb.log({"Loss": loss.item()}, step=epoch*len(self.train_loader) + step)
+                    wandb.log({"Loss": loss.item()}, step=epoch*len(self.data_util.train_loader) + step)
                 epoch_progress.update(1)
                 epoch_progress.set_postfix({'Loss': loss.item()})
 
                 if (step + 1) % 100 == 0:
                     elapsed = time.time() - start
-                    print(f'Epoch [{epoch + 1}/{self.args.epoch}], Step [{step + 1}/{len(self.train_loader)}], '
+                    print(f'Epoch [{epoch + 1}/{self.args.epoch}], Step [{step + 1}/{len(self.data_util.train_loader)}], '
                         f'Loss: {loss.item():.4f}, Total Time: {elapsed:.2f} sec')
                     # aspect , sentiment = self.evaluate_aspect_sentiment_accuracy2()
                

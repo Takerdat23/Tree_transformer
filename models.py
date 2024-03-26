@@ -163,7 +163,33 @@ class EncoderLayer(nn.Module):
 
     
         return x, group_prob, break_prob
+    
+class ABSA_Tree_transfomer(nn.Module): 
+    def __init__(self, vocab_size, N=12, d_model=768, d_ff=2048, h=12, dropout=0.1, num_categories= 10, no_cuda= False):
+        super(ABSA_Tree_transfomer, self).__init__()
+        "Helper: Construct a model from hyperparameters."
+        self.no_cuda=  no_cuda
+        self.c = copy.deepcopy
+        attn = MultiHeadedAttention(h, d_model, no_cuda=self.no_cuda)
+        group_attn = GroupAttention(d_model, no_cuda=self.no_cuda)
+        ff = PositionwiseFeedForward(d_model, d_ff, dropout)
+        position = PositionalEncoding(d_model, 128)
+        word_embed = nn.Sequential(Embeddings(d_model, vocab_size), self.c(position))
+        self.encoder = Encoder(EncoderLayer(d_model, self.c(attn), self.c(ff), vocab_size,group_attn, dropout), 
+                    N, d_model, vocab_size, self.c(word_embed),  dropout)
+        self.outputHead = Aspect_Based_SA_Output(dropout , d_model, 4, num_categories ) # 4 class label
 
+        
+        
+
+    def forward(self, inputs, mask, categories):
+        _, hiddenStates ,_= self.encoder.forward(inputs, mask)
+        
+        output = self.outputHead.forward(hiddenStates, categories )
+        return output
+
+
+#Base transformer
 
 class BaseEncoderLayer(nn.Module):
     "Encoder is made up of self-attn and feed forward (defined below)"
@@ -193,8 +219,8 @@ class BaseEncoder(nn.Module):
         super(BaseEncoder, self).__init__()
         self.word_embed = word_embed
         self.layers = clones(layer, N)
-        self.intermidiate = IntermidiateOutput( d_model, vocab_size)
-        self.output = EncoderOutputLayer(dropout, vocab_size, d_model)
+
+        self.output = EncoderOutputLayer(dropout, d_model, d_model)
         
         
 
@@ -210,7 +236,7 @@ class BaseEncoder(nn.Module):
         
 
        
-        x= self.intermidiate(x)
+      
        
    
         return x, hidden_states
@@ -250,26 +276,3 @@ class ABSA_transfomer(nn.Module):
 
 
 
-class ABSA_Tree_transfomer(nn.Module): 
-    def __init__(self, vocab_size, N=12, d_model=768, d_ff=2048, h=12, dropout=0.1, num_categories= 10, no_cuda= False):
-        super(ABSA_Tree_transfomer, self).__init__()
-        "Helper: Construct a model from hyperparameters."
-        self.no_cuda=  no_cuda
-        self.c = copy.deepcopy
-        self.attn = MultiHeadedAttention(h, d_model, no_cuda=self.no_cuda)
-        self.group_attn = GroupAttention(d_model, no_cuda=self.no_cuda)
-        self.ff = PositionwiseFeedForward(d_model, d_ff, dropout)
-        self.position = PositionalEncoding(d_model, 128)
-        self.word_embed = nn.Sequential(Embeddings(d_model, vocab_size), self.c(self.position))
-        self.encoder = Encoder(EncoderLayer(d_model, self.c(self.attn), self.c(self.ff), vocab_size, self.group_attn, dropout), 
-                    N, d_model, vocab_size, self.c(self.word_embed),  dropout)
-        self.outputHead = Aspect_Based_SA_Output(dropout , d_model, 4, num_categories ) # 4 class label
-
-        
-        
-
-    def forward(self, inputs, mask, categories):
-        _, hiddenStates ,_= self.encoder.forward(inputs, mask)
-        
-        output = self.outputHead.forward(hiddenStates, categories )
-        return output
