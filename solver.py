@@ -138,7 +138,7 @@ class Solver():
                 tt += ttt
         print('total_param_num:',tt)
         if (self.args.wandb_api != ""):
-            wandb.init(project="Tree_transformer", name="training ABSA")
+            wandb.init(project="Tree_transformer", name=self.args.run_name)
 
 
         self.model.to(device)
