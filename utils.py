@@ -193,65 +193,36 @@ class SentimentDataCollator:
                 "labels": labels_tensor}
 
 
-class ClassificationDataset(Dataset):
-    def __init__(self, train_path, tokenizer,  max_seq_length = 60, label_maps= None):
-        self.train_data = pd.read_csv(train_path)
-        self.tokenizer = tokenizer
-        self.label_maps = label_maps
-        self.max_length = max_seq_length
-       
-        
-    def __len__(self):
-        return len(self.train_data)
-
-    def __getitem__(self, idx):
-        
-
-    
-        
-        comment = self.train_data.iloc[idx, 1]
-        label = self.train_data.iloc[idx, 4]
-        
-        labels = label.split(';')[0]
-        print(labels)
-        label = labels.split('#')[1][:-1]
-
-        encoded = self.tokenizer(comment, max_length= self.max_length , truncation=True )
-        if(self.label_maps != None): 
-
-            label = self.label_maps[label]
-     
-        return encoded['input_ids'], encoded['attention_mask'], label
-
 
 class data_utils():
     def __init__(self, args):
         self.seq_length = args.seq_length
         self.batch_size = args.batch_size
         self.no_cuda = args.no_cuda
-
-        self.dict_path = os.path.join(args.model_dir,'dictionary.json')
         self.train_path = args.train_path
-        self.tokenizer = AutoTokenizer.from_pretrained('vinai/phobert-base')    
 
-        self.eos_id = 0
-        self.unk_id = 1
-        self.mask_id = 2
-        self.cls_id = 3
-
-        if args.train or not os.path.exists(self.dict_path):
-            self.process_training_data()
-            pass
-        elif args.test:
-            self.new_vocab = read_json(self.dict_path)
-            pass
-
-        print('vocab_size:',len(self.new_vocab))
         
-        self.vocab_size = len(self.new_vocab)
-        self.index2word = self.vocab_size*[[]]
-        for w in self.new_vocab:
-            self.index2word[self.new_vocab[w]] = w
+        
+        self.tokenizer = AutoTokenizer.from_pretrained('vinai/phobert-large')   
+        df_train = pd.read_csv(args.train_path,  encoding = 'utf8') 
+        df_val = pd.read_csv(args.valid_path,  encoding = 'utf8')
+        self.categories = get_categories(df_train)
+        dataset = process_data(df_train, self.categories)
+        val_dataset =  process_data(df_val, self.categories)
+        data_collator = SentimentDataCollator(self.tokenizer)
+        self.train_loader = DataLoader(dataset, batch_size=args.batch_size, collate_fn=data_collator)
+        self.val_loader =DataLoader(val_dataset, batch_size=args.batch_size, collate_fn=data_collator)
+
+
+        if args.test : 
+
+            df_test = pd.read_csv(args.test_path,  encoding = 'utf8')
+            self.test_categories = get_categories(df_test)
+            test_dataset =  process_data(df_test, self.categories)
+            self.test_loader =DataLoader(test_dataset, batch_size=args.batch_size, collate_fn=data_collator)
+      
+
+    
 
 
     def process_training_data(self):

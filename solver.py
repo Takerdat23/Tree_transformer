@@ -19,6 +19,9 @@ class Solver():
 
         self.model_dir = make_save_dir(args.model_dir)
         self.no_cuda = args.no_cuda
+
+        self.data_util = data_utils(args)
+        self.categories = self.data_util.categories
    
     
         if args.wandb_api != "": 
@@ -26,30 +29,15 @@ class Solver():
             wandb.login(key=args.wandb_api)
 
    
-         
-
-        self.tokenizer = AutoTokenizer.from_pretrained('vinai/phobert-base')
-
-        df_train = pd.read_csv(self.args.train_path,  encoding = 'utf8')
-        df_val = pd.read_csv(self.args.valid_path,  encoding = 'utf8')
-        # df_test = pd.read_csv(self.args.test_path,  encoding = 'utf8')
-
-
+    
         
-        # data_utils_holder = data_utils(self.args)
-        # data_yielder = data_utils_holder.train_data_yielder()
-        self.categories = get_categories(df_train)
-        # self.test_categories = get_categories(df_test)
-        dataset = process_data(df_train, self.categories)
-        val_dataset =  process_data(df_val, self.categories)
-        # test_dataset =  process_data(df_test, self.test_categories)
-        data_collator = SentimentDataCollator(self.tokenizer)
-        self.train_loader = DataLoader(dataset, batch_size=self.args.batch_size, collate_fn=data_collator)
-        self.val_loader =DataLoader(val_dataset, batch_size=self.args.batch_size, collate_fn=data_collator)
-        # self.test_loader =DataLoader(test_dataset, batch_size=self.args.batch_size, collate_fn=data_collator)
-        self.model = ABSA_transfomer( vocab_size= self.tokenizer.vocab_size, N= 12, d_model= 768, 
+        self.model = ABSA_transfomer( vocab_size= self.data_util.tokenizer.vocab_size, N= 12, d_model= 768, 
                                           d_ff= 2048, h= 12, dropout = 0.1, num_categories = len(self.categories) , 
                                           no_cuda=args.no_cuda)
+        
+        # self.model = ABSA_Tree_transfomer( vocab_size= self.tokenizer.vocab_size, N= 24, d_model= 1024, 
+        #                                   d_ff= 2048, h= 16, dropout = 0.1, num_categories = len(self.categories) , 
+        #                                   no_cuda=args.no_cuda)
         
        
 
@@ -88,7 +76,7 @@ class Solver():
         all_sentiment_ground_truth = []
 
         with torch.no_grad():
-            for step, batch in enumerate(self.val_loader):
+            for step, batch in enumerate(self.data_util.val_loader):
                 inputs = batch['input_ids'].to(device)
                 mask = batch['attention_mask'].to(device)
                 labels = batch['labels'].to(device)
@@ -114,10 +102,34 @@ class Solver():
         all_aspect_ground_truth = np.concatenate(all_aspect_ground_truth)
         all_sentiment_ground_truth = np.concatenate(all_sentiment_ground_truth)
 
-        aspect_accuracy = accuracy_score(all_aspect_ground_truth.flatten(), all_aspect_predictions.flatten())
-        sentiment_accuracy = accuracy_score(all_sentiment_ground_truth.flatten(), all_sentiment_predictions.flatten())
+        
 
-        return aspect_accuracy, sentiment_accuracy
+
+        all_aspect_predictions = np.concatenate(all_aspect_predictions)
+        all_sentiment_predictions = np.concatenate(all_sentiment_predictions)
+        all_aspect_ground_truth = np.concatenate(all_aspect_ground_truth)
+        all_sentiment_ground_truth = np.concatenate(all_sentiment_ground_truth)
+
+        aspect_precision = precision_score(all_aspect_ground_truth.flatten(), all_aspect_predictions.flatten())
+        aspect_recall = recall_score(all_aspect_ground_truth.flatten(), all_aspect_predictions.flatten())
+        aspect_f1 = f1_score(all_aspect_ground_truth.flatten(), all_aspect_predictions.flatten())
+
+        sentiment_precision = precision_score(all_sentiment_ground_truth.flatten(), all_sentiment_predictions.flatten(), average='weighted')
+        sentiment_recall = recall_score(all_sentiment_ground_truth.flatten(), all_sentiment_predictions.flatten(), average='weighted')
+        sentiment_f1 = f1_score(all_sentiment_ground_truth.flatten(), all_sentiment_predictions.flatten(), average='weighted')
+
+        print("Aspect Precision:", aspect_precision)
+        print("Aspect Recall:", aspect_recall)
+        print("Aspect F1 Score:", aspect_f1)
+
+        print("Sentiment Precision:", sentiment_precision)
+        print("Sentiment Recall:", sentiment_recall)
+        print("Sentiment F1 Score:", sentiment_f1)
+
+
+        
+
+        return aspect_f1, sentiment_f1
     
     def test(self):
         if self.args.no_cuda == False:
@@ -134,7 +146,7 @@ class Solver():
         all_sentiment_ground_truth = []
 
         with torch.no_grad():
-            for step, batch in enumerate(self.val_loader):
+            for step, batch in enumerate(self.data_util.test_loader):
                 inputs = batch['input_ids'].to(device)
                 mask = batch['attention_mask'].to(device)
                 labels = batch['labels'].to(device)
@@ -228,7 +240,7 @@ class Solver():
         for epoch in tqdm(range(self.args.epoch)):
             epoch_progress = tqdm(total=len(self.train_loader), desc=f'Epoch {epoch+1}/{self.args.epoch}', position=0)
 
-            for step, batch in enumerate(self.train_loader):
+            for step, batch in enumerate(self.data_util.train_loader):
                 inputs = batch['input_ids'].to(device)
                 mask = batch['attention_mask'].to(device)
                 labels = batch['labels'].to(device)

@@ -30,4 +30,7 @@ if __name__ == '__main__':
     if args.train:
         solver.train()
     elif args.test:
+        print("VALID SET")
+        solver.evaluate()
+        print("TEST SET")
         solver.test()
