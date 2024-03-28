@@ -194,7 +194,7 @@ class data_utils():
             tokenizer.train_from_iterator(df_train["comment"], vocab_size=30000, min_frequency=2,
                                         special_tokens=["[UNK]", "[CLS]", "[SEP]", "[PAD]", "[MASK]"])
             tokenizer.save_model(args.model_dir)
-            self.tokenizer = ByteLevelBPETokenizer.from_file(os.path.join(args.model_dir,"vocab.json" ), os.path.exists(os.path.join(args.model_dir,"merges.txt" )))
+            self.tokenizer = ByteLevelBPETokenizer.from_file( os.path.join(args.model_dir,"vocab.json" ), os.path.join(args.model_dir,"merges.txt" ))
 
           
         
