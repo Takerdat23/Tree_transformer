@@ -17,45 +17,9 @@ import pandas as pd
 import time
 from torch.utils.data import Dataset
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-
-def calculate_accuracy(true_labels, predicted_labels):
-    return accuracy_score(true_labels, predicted_labels)
-
-def calculate_precision(true_labels, predicted_labels):
-    return precision_score(true_labels, predicted_labels, average='weighted')
-
-def calculate_recall(true_labels, predicted_labels):
-    return recall_score(true_labels, predicted_labels, average='weighted')
-
-def calculate_f1_score(true_labels, predicted_labels):
-    return f1_score(true_labels, predicted_labels, average='weighted')
-
-
-# true_aspect_labels = [1 if aspect in true_labels else 0 for aspect in aspect_categories]
-# predicted_aspect_labels = [1 if aspect in predicted_labels else 0 for aspect in aspect_categories]
-
-# aspect_detection_accuracy = calculate_accuracy(true_aspect_labels, predicted_aspect_labels)
-# aspect_detection_precision = calculate_precision(true_aspect_labels, predicted_aspect_labels)
-# aspect_detection_recall = calculate_recall(true_aspect_labels, predicted_aspect_labels)
-# aspect_detection_f1_score = calculate_f1_score(true_aspect_labels, predicted_aspect_labels)
-
-# # Sentiment analysis evaluation
-# true_sentiment_labels = [label_vectors[aspect] for aspect in aspect_categories]
-# predicted_sentiment_labels = [label_vectors[aspect] for aspect in aspect_categories]
-
-# sentiment_analysis_accuracy = calculate_accuracy(true_sentiment_labels, predicted_sentiment_labels)
-# sentiment_analysis_precision = calculate_precision(true_sentiment_labels, predicted_sentiment_labels)
-# sentiment_analysis_recall = calculate_recall(true_sentiment_labels, predicted_sentiment_labels)
-# sentiment_analysis_f1_score = calculate_f1_score(true_sentiment_labels, predicted_sentiment_labels)
-
-# # Aspect + Sentiment analysis evaluation
-# true_combined_labels = [label_vectors[aspect] for aspect in aspect_categories]
-# predicted_combined_labels = [label_vectors[aspect] for aspect in aspect_categories]
-
-# combined_analysis_accuracy = calculate_accuracy(true_combined_labels, predicted_combined_labels)
-# combined_analysis_precision = calculate_precision(true_combined_labels, predicted_combined_labels)
-# combined_analysis_recall = calculate_recall(true_combined_labels, predicted_combined_labels)
-# combined_analysis_f1_score = calculate_f1_score(true_combined_labels, predicted_combined_labels)
+from tokenizers import ByteLevelBPETokenizer
+from tokenizers.processors import BertProcessing
+import json 
 
 
 def read_json(filename):
@@ -183,13 +147,29 @@ class SentimentDataCollator:
         inputs = [example["comment"] for example in batch]
         labels = [example["label"] for example in batch]
 
-        inputs_dict = self.tokenizer(inputs, max_length=128,  padding='max_length', truncation=True, return_tensors="pt")
+
+        encoded_batch = [self.tokenizer.encode(sentence) for sentence in inputs]
+
+        # Get the maximum sequence length
+        max_length = 128
+
+        # Pad and truncate the sequences
+        for encoded in encoded_batch:
+            encoded.pad(max_length)
+            encoded.truncate(max_length)
+
+        # Convert the sequences to numpy arrays
+        input_ids = torch.tensor([encoded.ids for encoded in encoded_batch])
+        attention_mask = torch.tensor([encoded.attention_mask for encoded in encoded_batch])
+
+ 
      
         labels_tensor = torch.stack(labels)
+       
 
       
-        return {"input_ids": inputs_dict["input_ids"].squeeze(0),
-                "attention_mask": inputs_dict["attention_mask"].squeeze(0),
+        return {"input_ids": input_ids,
+                "attention_mask": attention_mask,
                 "labels": labels_tensor}
 
 
@@ -201,11 +181,23 @@ class data_utils():
         self.no_cuda = args.no_cuda
         self.train_path = args.train_path
 
-        
-        
-        self.tokenizer = AutoTokenizer.from_pretrained('vinai/phobert-large')   
         df_train = pd.read_csv(args.train_path,  encoding = 'utf8') 
         df_val = pd.read_csv(args.valid_path,  encoding = 'utf8')
+
+        if os.path.exists(os.path.join(args.model_dir,"vocab.json" )) and os.path.exists(os.path.join(args.model_dir,"merges.txt" )): 
+            self.tokenizer = ByteLevelBPETokenizer.from_file( os.path.join(args.model_dir,"vocab.json" ), os.path.join(args.model_dir,"merges.txt" ))
+        else: 
+            print("No Tokenizer found")
+            
+            tokenizer = ByteLevelBPETokenizer()
+
+            tokenizer.train_from_iterator(df_train["comment"], vocab_size=30000, min_frequency=2,
+                                        special_tokens=["[UNK]", "[CLS]", "[SEP]", "[PAD]", "[MASK]"])
+            tokenizer.save_model(args.model_dir)
+            self.tokenizer = ByteLevelBPETokenizer.from_file(os.path.join(args.model_dir,"vocab.json" ), os.path.exists(os.path.join(args.model_dir,"merges.txt" )))
+
+          
+        
         self.categories = get_categories(df_train)
         dataset = process_data(df_train, self.categories)
         val_dataset =  process_data(df_val, self.categories)

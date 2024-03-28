@@ -22,6 +22,7 @@ class Solver():
 
         self.data_util = data_utils(args)
         self.categories = self.data_util.categories
+        self.vocab_size = 64000
    
     
         if args.wandb_api != "": 
@@ -35,7 +36,7 @@ class Solver():
         #                                   d_ff= 2048, h= 12, dropout = 0.1, num_categories = len(self.categories) , 
         #                                   no_cuda=args.no_cuda)
         
-        self.model = ABSA_Tree_transfomer( vocab_size= self.data_util.tokenizer.vocab_size, N= 12, d_model= 768, 
+        self.model = ABSA_Tree_transfomer( vocab_size= self.vocab_size, N= 12, d_model= 768, 
                                           d_ff= 2048, h= 12, dropout = 0.1, num_categories = len(self.categories) , 
                                           no_cuda=args.no_cuda)
         
