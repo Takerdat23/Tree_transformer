@@ -5,3 +5,5 @@ transformers
 nltk
 scikit-learn
 wandb
+underthesea
+py_vncorenlp
