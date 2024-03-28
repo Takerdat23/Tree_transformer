@@ -32,13 +32,13 @@ class Solver():
    
     
         
-        # self.model = ABSA_transfomer( vocab_size= self.data_util.tokenizer.vocab_size, N= 12, d_model= 768, 
-        #                                   d_ff= 2048, h= 12, dropout = 0.1, num_categories = len(self.categories) , 
-        #                                   no_cuda=args.no_cuda)
-        
-        self.model = ABSA_Tree_transfomer( vocab_size= self.vocab_size, N= 12, d_model= 768, 
+        self.model = ABSA_transfomer( vocab_size= self.vocab_size, N= 12, d_model= 768, 
                                           d_ff= 2048, h= 12, dropout = 0.1, num_categories = len(self.categories) , 
                                           no_cuda=args.no_cuda)
+        
+        # self.model = ABSA_Tree_transfomer( vocab_size= self.vocab_size, N= 12, d_model= 768, 
+        #                                   d_ff= 2048, h= 12, dropout = 0.1, num_categories = len(self.categories) , 
+        #                                   no_cuda=args.no_cuda)
         
        
 
