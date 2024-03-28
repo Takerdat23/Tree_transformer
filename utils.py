@@ -63,7 +63,7 @@ def process_data(df ,aspect_categories ):
     for _ , row in df.iterrows():
         data_dict = {}
  
-        data_dict["comment"]= row['segmented_comment']
+        data_dict["comment"]= row['comment']
         label_vectors = {}
 
 
