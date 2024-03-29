@@ -36,8 +36,8 @@ class Aspect_Based_SA_Output(nn.Module):
          categories: aspect, categories  
          Output: sentiment output 
         """
-        pooled_output = torch.cat([model_output[i] for i in range(-4, 0)], dim=-1)
-        pooled_output, _ = torch.max(pooled_output , dim = 1 )
+        pooled_output = torch.cat([model_output[i] for i in range(-4, 0)], dim=-1)[: , 0 , :]
+
       
       
         x = self.dropout(pooled_output)
