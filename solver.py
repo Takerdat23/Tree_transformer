@@ -254,6 +254,8 @@ class Solver():
                 output = torch.sigmoid(output)
                 output = output.float()
                 labels = labels.float()
+
+               
                 loss = F.binary_cross_entropy(output, labels)
                 
                 # loss = self.model.masked_lm_loss(output, labels)

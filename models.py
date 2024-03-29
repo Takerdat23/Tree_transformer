@@ -23,7 +23,7 @@ class Aspect_Based_SA_Output(nn.Module):
         categories: categories list
         """
         super(Aspect_Based_SA_Output, self).__init__()
-        self.dense = nn.Linear(d_input * 4 , d_output *num_categories ,  bias=True)
+        self.dense = nn.Linear(d_input  , d_output *num_categories ,  bias=True)
         # self.softmax = nn.Softmax(dim=-1) 
         self.norm = nn.LayerNorm(d_output, eps=1e-12)
         self.dropout = nn.Dropout(dropout)
@@ -36,7 +36,7 @@ class Aspect_Based_SA_Output(nn.Module):
          categories: aspect, categories  
          Output: sentiment output 
         """
-        pooled_output = torch.cat([model_output[i] for i in range(-4, 0)], dim=-1)[: , 0 , :]
+        pooled_output = model_output[-1][: , 0 , :]
 
       
       
