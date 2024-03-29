@@ -250,7 +250,7 @@ class ABSA_transfomer(nn.Module):
             max_position_embeddings=512, 
             output_hidden_states=True
         )
-        self.encoder = BertModel(model_config)
+        self.encoder = BertModel.from_pretrained("vinai/phobert-base",output_hidden_states = True )
         self.outputHead = Aspect_Based_SA_Output(dropout , d_model, 4, num_categories ) 
 
         

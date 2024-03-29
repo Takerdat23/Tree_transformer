@@ -227,7 +227,7 @@ class Solver():
 
         self.model.to(device)
      
-        optim = torch.optim.Adam(self.model.parameters(), lr=1e-4, betas=(0.9, 0.98), eps=1e-9)
+        optim = torch.optim.Adam(self.model.parameters(), lr=2e-5, betas=(0.9, 0.98), eps=1e-9)
         #optim = BertAdam(self.model.parameters(), lr=1e-4)
         
         total_loss = []

@@ -139,6 +139,7 @@ def get_test(test_file):
     return txts
 
 
+
 class SentimentDataCollator:
     def __init__(self, tokenizer):
         self.tokenizer = tokenizer
@@ -147,30 +148,48 @@ class SentimentDataCollator:
         inputs = [example["comment"] for example in batch]
         labels = [example["label"] for example in batch]
 
+        inputs_dict = self.tokenizer(inputs, max_length=128,  padding='max_length', truncation=True, return_tensors="pt")
+     
+        labels_tensor = torch.stack(labels)
 
-        encoded_batch = [self.tokenizer.encode(sentence) for sentence in inputs]
+      
+        return {"input_ids": inputs_dict["input_ids"].squeeze(0),
+                "attention_mask": inputs_dict["attention_mask"].squeeze(0),
+                "labels": labels_tensor}
 
-        # Get the maximum sequence length
-        max_length = 128
 
-        # Pad and truncate the sequences
-        for encoded in encoded_batch:
-            encoded.pad(max_length)
-            encoded.truncate(max_length)
+# class SentimentDataCollator:
+#     def __init__(self, tokenizer):
+#         self.tokenizer = tokenizer
 
-        # Convert the sequences to numpy arrays
-        input_ids = torch.tensor([encoded.ids for encoded in encoded_batch])
-        attention_mask = torch.tensor([encoded.attention_mask for encoded in encoded_batch])
+#     def __call__(self, batch):
+#         inputs = [example["comment"] for example in batch]
+#         labels = [example["label"] for example in batch]
+
+
+#         encoded_batch = [self.tokenizer.encode(sentence) for sentence in inputs]
+
+#         # Get the maximum sequence length
+#         max_length = 128
+
+#         # Pad and truncate the sequences
+#         for encoded in encoded_batch:
+#             encoded.pad(max_length)
+#             encoded.truncate(max_length)
+
+#         # Convert the sequences to numpy arrays
+#         input_ids = torch.tensor([encoded.ids for encoded in encoded_batch])
+#         attention_mask = torch.tensor([encoded.attention_mask for encoded in encoded_batch])
 
  
      
-        labels_tensor = torch.stack(labels)
+#         labels_tensor = torch.stack(labels)
        
 
       
-        return {"input_ids": input_ids,
-                "attention_mask": attention_mask,
-                "labels": labels_tensor}
+#         return {"input_ids": input_ids,
+#                 "attention_mask": attention_mask,
+#                 "labels": labels_tensor}
 
 
 
@@ -187,7 +206,8 @@ class data_utils():
         df_val = pd.read_csv(args.valid_path,  encoding = 'utf8')
         
         if os.path.exists(os.path.join(args.model_dir,"vocab.json" )) and os.path.exists(os.path.join(args.model_dir,"merges.txt" )): 
-            self.tokenizer = ByteLevelBPETokenizer.from_file( os.path.join(args.model_dir,"vocab.json" ), os.path.join(args.model_dir,"merges.txt" ))
+            self.tokenizer = AutoTokenizer.from_pretrained("vinai/phobert-base")
+            # self.tokenizer = ByteLevelBPETokenizer.from_file( os.path.join(args.model_dir,"vocab.json" ), os.path.join(args.model_dir,"merges.txt" ))
         else: 
             print("No Tokenizer found")
             
