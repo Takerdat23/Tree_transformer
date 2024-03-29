@@ -21,6 +21,7 @@ from tokenizers import ByteLevelBPETokenizer
 from tokenizers.processors import BertProcessing
 import json 
 from underthesea import word_tokenize
+import py_vncorenlp
 
 def read_json(filename):
     with open(filename, 'r') as fp:
@@ -214,7 +215,9 @@ class data_utils():
             self.test_categories = get_categories(df_test)
             test_dataset =  process_data(df_test, self.categories)
             self.test_loader =DataLoader(test_dataset, batch_size=args.batch_size, collate_fn=data_collator)
-      
+        
+
+       
 
     
 
