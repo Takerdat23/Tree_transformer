@@ -183,8 +183,7 @@ class data_utils():
         self.train_path = args.train_path
 
         df_train = pd.read_csv(args.train_path,  encoding = 'utf8') 
-        df_train["segmented_comment"] = df_train["comment"].apply(lambda x: " ".join(word_tokenize(x)))
-        print(df_train["segmented_comment"])
+        
         df_val = pd.read_csv(args.valid_path,  encoding = 'utf8')
         
         if os.path.exists(os.path.join(args.model_dir,"vocab.json" )) and os.path.exists(os.path.join(args.model_dir,"merges.txt" )): 
