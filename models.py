@@ -6,28 +6,10 @@ from attention import *
 from torch.nn import CrossEntropyLoss
 from torch.nn import GELU
 from modules import *
+from transformers import BertModel, BertConfig
 
 
-# class Aspect_Based_SA_Output(nn.Module): 
-#     def __init__(self, dropout, d_input, d_output, num_labels):
-#         super(Aspect_Based_SA_Output, self).__init__()
-#         self.dense = nn.Linear(d_input, d_output)
-#         self.norm = nn.LayerNorm(d_output, eps=1e-12)
-#         self.dropout = nn.Dropout(dropout)
-#         self.num_labels = num_labels
 
-#     def forward(self, model_output):
-#         # Concatenate the last four hidden states
-#         pooled_output = torch.cat([model_output[i] for i in range(-4, 0)], dim=-1)[:, 0, :]
-#         x = self.dropout(pooled_output)
-
-#         # Apply dropout and normalization
-#         x = self.norm(x)
-        
-#         # Apply linear transformation for each label
-#         outputs = [self.dense(x) for _ in range(self.num_labels)]
-#         outputs = torch.cat(outputs, dim=-1)
-#         return outputs
     
 
     
@@ -256,22 +238,29 @@ class ABSA_transfomer(nn.Module):
         super(ABSA_transfomer, self).__init__()
         "Helper: Construct a model from hyperparameters."
         self.no_cuda=  no_cuda
-        self.c = copy.deepcopy
-        attn = MultiHeadedAttention(h, d_model, no_cuda=self.no_cuda)
-        ff = PositionwiseFeedForward(d_model, d_ff, dropout)
-        position = PositionalEncoding(d_model, 128)
-        word_embed = nn.Sequential(Embeddings(d_model, vocab_size), self.c(position))
-        self.encoder = BaseEncoder(BaseEncoderLayer(d_model, self.c(attn), self.c(ff), vocab_size, dropout), 
-                    N, d_model, vocab_size, self.c(word_embed),  dropout)
-        self.outputHead = Aspect_Based_SA_Output(dropout , d_model, 4, num_categories ) # 4 class label
+        model_config = BertConfig(
+            num_hidden_layers=N,
+            hidden_size=d_model,
+            num_attention_heads=h,
+            type_vocab_size=2,
+            vocab_size=vocab_size,
+            max_position_embeddings=512, 
+            output_hidden_states=True
+        )
+        self.encoder = BertModel(model_config)
+        self.outputHead = Aspect_Based_SA_Output(dropout , d_model, 4, num_categories ) 
 
         
         
 
     def forward(self, inputs, mask, categories):
-        _, hiddenStates = self.encoder.forward(inputs, mask)
+        outputs = self.encoder(input_ids=inputs, attention_mask=mask)
+     
+        last_4_hidden_states = outputs.hidden_states
+        # print(torch.stack(list(last_4_hidden_states), dim=0).shape)
+       
         
-        output = self.outputHead.forward(hiddenStates, categories )
+        output = self.outputHead.forward(last_4_hidden_states, categories )
         return output
 
 
