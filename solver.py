@@ -56,7 +56,7 @@ class Solver():
         print(self.model)
     
     def LoadPretrain(self): 
-        path = os.path.join(self.args.model_dir)
+        path = os.path.join(self.args.model_dir, "ABSA", "segment_bert_base.pth")
         return self.model.load_state_dict(torch.load(path)['model_state_dict'])
     
   

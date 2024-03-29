@@ -94,7 +94,7 @@ class Encoder(nn.Module):
         super(Encoder, self).__init__()
         self.word_embed = word_embed
         self.layers = clones(layer, N)
-        # self.intermidiate = IntermidiateOutput( d_model, vocab_size)
+        self.intermidiate = IntermidiateOutput( d_model, vocab_size)
         self.output = EncoderOutputLayer(dropout, d_model, d_model)
         
         
@@ -111,7 +111,7 @@ class Encoder(nn.Module):
             break_probs.append(break_prob)
 
        
-        # x= self.intermidiate(x)
+        x= self.intermidiate(x)
        
         break_probs = torch.stack(break_probs, dim=1)
         return x, hidden_states, break_probs
@@ -183,6 +183,7 @@ class BaseEncoderLayer(nn.Module):
         self.self_attn = self_attn
         self.feed_forward = feed_forward
         self.sublayer = clones(SublayerConnection(size, dropout), 2)
+        
         self.size = size
         # self.selfoutput = SelfOutputLayer(dropout, size, size )
         
@@ -204,7 +205,7 @@ class BaseEncoder(nn.Module):
         super(BaseEncoder, self).__init__()
         self.word_embed = word_embed
         self.layers = clones(layer, N)
-
+        self.intermidiate = IntermidiateOutput( d_model, vocab_size)
         self.output = EncoderOutputLayer(dropout, d_model, d_model)
         
         
@@ -220,7 +221,7 @@ class BaseEncoder(nn.Module):
             hidden_states.append(x)
         
 
-       
+        x= self.intermidiate(x)
       
        
    
@@ -241,29 +242,23 @@ class ABSA_transfomer(nn.Module):
         super(ABSA_transfomer, self).__init__()
         "Helper: Construct a model from hyperparameters."
         self.no_cuda=  no_cuda
-        model_config = BertConfig(
-            num_hidden_layers=N,
-            hidden_size=d_model,
-            num_attention_heads=h,
-            type_vocab_size=2,
-            vocab_size=vocab_size,
-            max_position_embeddings=512, 
-            output_hidden_states=True
-        )
-        self.encoder = BertModel(model_config)
-        self.outputHead = Aspect_Based_SA_Output(dropout , d_model, 4, num_categories ) 
+        self.no_cuda=  no_cuda
+        self.c = copy.deepcopy
+        attn = MultiHeadedAttention(h, d_model, no_cuda=self.no_cuda)
+        ff = PositionwiseFeedForward(d_model, d_ff, dropout)
+        position = PositionalEncoding(d_model, 128)
+        word_embed = nn.Sequential(Embeddings(d_model, vocab_size), self.c(position))
+        self.encoder = BaseEncoder(BaseEncoderLayer(d_model, self.c(attn), self.c(ff), vocab_size, dropout), 
+                    N, d_model, vocab_size, self.c(word_embed),  dropout)
+        self.outputHead = Aspect_Based_SA_Output(dropout , d_model, 4, num_categories ) # 4 class label
 
         
         
 
     def forward(self, inputs, mask, categories):
-        outputs = self.encoder(input_ids=inputs, attention_mask=mask)
-     
-        last_4_hidden_states = outputs.hidden_states
-        # print(torch.stack(list(last_4_hidden_states), dim=0).shape)
-       
-        
-        output = self.outputHead.forward(last_4_hidden_states, categories )
+        _, hiddenStates = self.encoder.forward(inputs, mask)
+
+        output = self.outputHead.forward(hiddenStates, categories )
         return output
 
 
