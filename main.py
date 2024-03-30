@@ -18,6 +18,8 @@ def parse():
     parser.add_argument('-train_path',default='data/train.txt',help='training data path')
     parser.add_argument('-test_path',default='data/test.txt',help='testing data path')
     parser.add_argument('-wandb_api',default='',help='wandb api key')
+    parser.add_argument('-wandb_Project',default='default',help='wandb project name')
+    parser.add_argument('-wandb_RunName',default='Run',help='wandb run name')
     args = parser.parse_args()
     
     return args
