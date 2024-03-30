@@ -235,7 +235,7 @@ class BaseEncoder(nn.Module):
         super(BaseEncoder, self).__init__()
         self.word_embed = word_embed
         self.layers = clones(layer, N)
-        # self.intermidiate = IntermidiateOutput( d_model, vocab_size)
+        self.intermidiate = IntermidiateOutput( d_model, vocab_size)
         self.output = EncoderOutputLayer(dropout, d_model, d_model)
         
         
@@ -251,7 +251,7 @@ class BaseEncoder(nn.Module):
             hidden_states.append(x)
         
 
-        # x= self.intermidiate(x)
+        x= self.intermidiate(x)
       
        
    
@@ -268,7 +268,7 @@ class BaseEncoder(nn.Module):
 
 
 class ABSA_transfomer(nn.Module): 
-    def __init__(self, vocab_size, N=12, d_model=768, d_ff=2048, h=12, dropout=0.1, num_categories= 10, no_cuda= False):
+    def __init__(self, vocab_size, N=12, d_model=768, d_ff=2048, h=12, dropout=0.1, no_cuda= False):
         super(ABSA_transfomer, self).__init__()
         "Helper: Construct a model from hyperparameters."
         self.no_cuda=  no_cuda
@@ -280,15 +280,15 @@ class ABSA_transfomer(nn.Module):
         word_embed = nn.Sequential(Embeddings(d_model, vocab_size), self.c(position))
         self.encoder = BaseEncoder(BaseEncoderLayer(d_model, self.c(attn), self.c(ff), vocab_size, dropout), 
                     N, d_model, vocab_size, self.c(word_embed),  dropout)
-        self.outputHead = Aspect_Based_SA_Output(dropout , d_model, 4, num_categories ) # 4 class label
+        self.outputHead = Topic_SA_Output( d_model, 4, 3 ) # 4 topic label and 3 sentiment class
 
         
         
 
-    def forward(self, inputs, mask, categories):
-        _, hiddenStates = self.encoder.forward(inputs, mask)
-
-        output = self.outputHead.forward(hiddenStates, categories )
+    def forward(self, inputs, mask):
+        _, hiddenStates= self.encoder.forward(inputs, mask)
+        
+        output = self.outputHead.forward(hiddenStates)
         return output
 
 
