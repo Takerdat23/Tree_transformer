@@ -41,20 +41,6 @@ def make_save_dir(save_dir):
 
 #for aspect-based tasks
 
-def get_categories(df): 
-    aspect_categories = set()
-    for index , row in df.iterrows():
-    # Process aspect sentiments
-        aspect_sentiments = row['label'].split(';')
-        for aspect_sentiment in aspect_sentiments:
-            split = aspect_sentiment.strip('{}')
-            if(len(split.split('#'))< 2): 
-                continue
-            aspect, _ = split.split('#')
-            aspect_categories.add(aspect)
-
-    return list(aspect_categories)
-
 
 
 def process_student_feedback(df):
@@ -86,6 +72,28 @@ def process_student_feedback(df):
 
 
 
+def get_categories(df): 
+    aspect_categories = set()
+    for index , row in df.iterrows():
+    # Process aspect sentiments
+        aspect_sentiments = re.split(r"(?<=}),\s*(?={)|(?<=}),(?={)", row['Label'])
+    
+
+        for aspect_sentiment in aspect_sentiments:
+            split = aspect_sentiment.strip('{}')
+            if(len(split.split(','))< 2): 
+                continue
+           
+            aspect, _ = split.split(',')
+
+           
+            aspect_categories.add(aspect)
+    
+
+    return list(aspect_categories)
+
+
+
 def process_data(df ,aspect_categories ): 
 
     dataset = []
@@ -93,19 +101,20 @@ def process_data(df ,aspect_categories ):
     for _ , row in df.iterrows():
         data_dict = {}
  
-        data_dict["comment"]= row['comment']
+        data_dict["comment"]= row['Review']
         label_vectors = {}
 
 
         aspect_sentiments = {}
-        if row['label'] == None: 
+        aspect_sentiments_instance = re.split(r"(?<=}),\s*(?={)|(?<=}),(?={)", row['Label'])
+        if row['Label'] == None: 
             continue
         else: 
-            for aspect_sentiment in row['label'].split(';'):
+            for aspect_sentiment in aspect_sentiments_instance:
                 split = aspect_sentiment.strip('{}')
-                if(len(split.split('#'))< 2): 
+                if(len(split.split(','))< 2): 
                     continue
-                aspect, sentiment = split.split('#')
+                aspect, sentiment = split.split(',')
                 aspect_sentiments[aspect] = sentiment
 
    
@@ -114,11 +123,11 @@ def process_data(df ,aspect_categories ):
                 sentiment = aspect_sentiments.get(aspect, None)
               
                 if sentiment:
-                    if sentiment == 'Positive':
+                    if sentiment == 'positive':
                         label_vector[1] = 1
-                    elif sentiment == 'Negative':
+                    elif sentiment == 'negative':
                         label_vector[2] = 1
-                    elif sentiment == 'Neutral':
+                    elif sentiment == 'neutral':
                         label_vector[3] = 1
                 else: 
                     label_vector[0] = 1 #if the aspect not in the currunt comment
@@ -127,6 +136,7 @@ def process_data(df ,aspect_categories ):
         
      
             data_dict["label"]= torch.tensor([label_vectors[aspect] for aspect in aspect_categories])
+          
         dataset.append(data_dict)
 
     return dataset
@@ -174,9 +184,8 @@ class SentimentDataCollator:
         self.tokenizer = tokenizer
 
     def __call__(self, batch):
-        inputs = [example["sentence"] for example in batch]
-        topics  = [example["topic"] for example in batch]
-        sentiments = [example["sentiment"] for example in batch]
+        inputs = [example["comment"] for example in batch]
+        labels = [example["label"] for example in batch]
 
 
         encoded_batch = [self.tokenizer.encode(sentence) for sentence in inputs]
@@ -194,16 +203,15 @@ class SentimentDataCollator:
         attention_mask = torch.tensor([encoded.attention_mask for encoded in encoded_batch])
 
  
-        topic_tensor = torch.stack(topics)
-        sentiment_tensor = torch.stack(sentiments)
-        
+     
+        labels_tensor = torch.stack(labels)
        
 
       
         return {"input_ids": input_ids,
                 "attention_mask": attention_mask,
-                "topic": topic_tensor, 
-               "sentiment": sentiment_tensor }
+                "labels": labels_tensor}
+
 
 
 
@@ -215,26 +223,28 @@ class data_utils():
         self.train_path = args.train_path
 
         df_train = pd.read_csv(args.train_path,  encoding = 'utf8') 
-        
+  
         df_val = pd.read_csv(args.valid_path,  encoding = 'utf8')
         
         if os.path.exists(os.path.join(args.model_dir,"vocab.json" )) and os.path.exists(os.path.join(args.model_dir,"merges.txt" )): 
+            # self.tokenizer = AutoTokenizer.from_pretrained("vinai/phobert-base")
             self.tokenizer = ByteLevelBPETokenizer.from_file( os.path.join(args.model_dir,"vocab.json" ), os.path.join(args.model_dir,"merges.txt" ))
         else: 
             print("No Tokenizer found")
+            # self.tokenizer = AutoTokenizer.from_pretrained("vinai/phobert-base")
             
             tokenizer = ByteLevelBPETokenizer()
 
-            tokenizer.train_from_iterator(df_train["sentence"], vocab_size=30000, min_frequency=2,
+            tokenizer.train_from_iterator(df_train["segmented_comment"], vocab_size=30000, min_frequency=2,
                               special_tokens=["[UNK]", "[CLS]", "[SEP]", "[PAD]", "[MASK]"])
             tokenizer.save_model(args.model_dir)
             self.tokenizer = ByteLevelBPETokenizer.from_file( os.path.join(args.model_dir,"vocab.json" ), os.path.join(args.model_dir,"merges.txt" ))
 
           
         
-       
-        dataset = process_student_feedback(df_train)
-        val_dataset =  process_student_feedback(df_val)
+        self.categories = get_categories(df_train)
+        dataset = process_data(df_train, self.categories)
+        val_dataset =  process_data(df_val, self.categories)
         data_collator = SentimentDataCollator(self.tokenizer)
         self.train_loader = DataLoader(dataset, batch_size=args.batch_size, collate_fn=data_collator)
         self.val_loader =DataLoader(val_dataset, batch_size=args.batch_size, collate_fn=data_collator)
@@ -243,13 +253,13 @@ class data_utils():
         if args.test : 
 
             df_test = pd.read_csv(args.test_path,  encoding = 'utf8')
-            test_dataset =  process_student_feedback(df_test)
+            self.test_categories = get_categories(df_test)
+            test_dataset =  process_data(df_test, self.categories)
             self.test_loader =DataLoader(test_dataset, batch_size=args.batch_size, collate_fn=data_collator)
-        
-
-       
+      
 
     
+
 
 
     def process_training_data(self):
