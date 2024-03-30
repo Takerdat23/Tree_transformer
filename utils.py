@@ -57,6 +57,35 @@ def get_categories(df):
 
 
 
+def process_student_feedback(df):
+   
+    dataset = []
+   
+    for _, row in df.iterrows():
+        data_dict = {}
+ 
+        data_dict["sentence"] = row['sentence']
+        
+        # Convert sentiment and topic to one-hot encoded tensors
+        sentiment_idx =row['sentiment']
+        topic_idx =row['topic']
+        
+        sentiment_one_hot = torch.zeros(3)
+        sentiment_one_hot[sentiment_idx] = 1
+        
+        topic_one_hot = torch.zeros(4)
+        topic_one_hot[topic_idx] = 1
+        
+     
+        
+        data_dict["topic"] =  topic_one_hot
+        data_dict["sentiment"] =   sentiment_one_hot
+        dataset.append(data_dict)
+
+    return dataset
+
+
+
 def process_data(df ,aspect_categories ): 
 
     dataset = []
@@ -145,8 +174,9 @@ class SentimentDataCollator:
         self.tokenizer = tokenizer
 
     def __call__(self, batch):
-        inputs = [example["comment"] for example in batch]
-        labels = [example["label"] for example in batch]
+        inputs = [example["sentence"] for example in batch]
+        topics  = [example["topic"] for example in batch]
+        sentiments = [example["sentiment"] for example in batch]
 
 
         encoded_batch = [self.tokenizer.encode(sentence) for sentence in inputs]
@@ -164,14 +194,16 @@ class SentimentDataCollator:
         attention_mask = torch.tensor([encoded.attention_mask for encoded in encoded_batch])
 
  
-     
-        labels_tensor = torch.stack(labels)
+        topic_tensor = torch.stack(topics)
+        sentiment_tensor = torch.stack(sentiments)
+        
        
 
       
         return {"input_ids": input_ids,
                 "attention_mask": attention_mask,
-                "labels": labels_tensor}
+                "topic": topic_tensor, 
+               "sentiment": sentiment_tensor }
 
 
 
@@ -183,8 +215,7 @@ class data_utils():
         self.train_path = args.train_path
 
         df_train = pd.read_csv(args.train_path,  encoding = 'utf8') 
-        df_train["segmented_comment"] = df_train["comment"].apply(lambda x: " ".join(word_tokenize(x)))
-        print(df_train["segmented_comment"])
+        
         df_val = pd.read_csv(args.valid_path,  encoding = 'utf8')
         
         if os.path.exists(os.path.join(args.model_dir,"vocab.json" )) and os.path.exists(os.path.join(args.model_dir,"merges.txt" )): 
@@ -194,16 +225,16 @@ class data_utils():
             
             tokenizer = ByteLevelBPETokenizer()
 
-            tokenizer.train_from_iterator(df_train["segmented_comment"], vocab_size=30000, min_frequency=2,
+            tokenizer.train_from_iterator(df_train["sentence"], vocab_size=30000, min_frequency=2,
                               special_tokens=["[UNK]", "[CLS]", "[SEP]", "[PAD]", "[MASK]"])
             tokenizer.save_model(args.model_dir)
             self.tokenizer = ByteLevelBPETokenizer.from_file( os.path.join(args.model_dir,"vocab.json" ), os.path.join(args.model_dir,"merges.txt" ))
 
           
         
-        self.categories = get_categories(df_train)
-        dataset = process_data(df_train, self.categories)
-        val_dataset =  process_data(df_val, self.categories)
+       
+        dataset = process_student_feedback(df_train)
+        val_dataset =  process_student_feedback(df_val)
         data_collator = SentimentDataCollator(self.tokenizer)
         self.train_loader = DataLoader(dataset, batch_size=args.batch_size, collate_fn=data_collator)
         self.val_loader =DataLoader(val_dataset, batch_size=args.batch_size, collate_fn=data_collator)
@@ -212,8 +243,7 @@ class data_utils():
         if args.test : 
 
             df_test = pd.read_csv(args.test_path,  encoding = 'utf8')
-            self.test_categories = get_categories(df_test)
-            test_dataset =  process_data(df_test, self.categories)
+            test_dataset =  process_student_feedback(df_test)
             self.test_loader =DataLoader(test_dataset, batch_size=args.batch_size, collate_fn=data_collator)
         
 

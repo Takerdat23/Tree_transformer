@@ -9,8 +9,38 @@ from modules import *
 from transformers import BertModel, BertConfig
 
 
-
+class Topic_SA_Output(nn.Module): 
+    def __init__(self, d_input, topic_output, sentiment_output):
+        """
+        Initialization 
+        dropout: dropout percent
+        d_input: Model dimension 
+        d_output: output dimension 
+        categories: categories list
+        """
+        super(Topic_SA_Output, self).__init__()
+        self.Topicdense = nn.Linear(d_input , topic_output,  bias=True)
+        self.SentimentDense = nn.Linear(d_input , sentiment_output,  bias=True)
+     
+   
     
+
+    def forward(self, model_output ):
+        """ 
+         x : Model output 
+         categories: aspect, categories  
+         Output: sentiment output 
+        """
+        pooled_output = model_output[-1][: , 0 , :]
+
+        topic = self.Topicdense(pooled_output )
+
+        sentiment = self.SentimentDense(pooled_output)
+
+        return topic , sentiment
+
+
+
 
     
 class Aspect_Based_SA_Output(nn.Module): 
@@ -150,7 +180,7 @@ class EncoderLayer(nn.Module):
         return x, group_prob, break_prob
     
 class ABSA_Tree_transfomer(nn.Module): 
-    def __init__(self, vocab_size, N=12, d_model=768, d_ff=2048, h=12, dropout=0.1, num_categories= 10, no_cuda= False):
+    def __init__(self, vocab_size, N=12, d_model=768, d_ff=2048, h=12, dropout=0.1, no_cuda= False):
         super(ABSA_Tree_transfomer, self).__init__()
         "Helper: Construct a model from hyperparameters."
         self.no_cuda=  no_cuda
@@ -162,15 +192,15 @@ class ABSA_Tree_transfomer(nn.Module):
         word_embed = nn.Sequential(Embeddings(d_model, vocab_size), self.c(position))
         self.encoder = Encoder(EncoderLayer(d_model, self.c(attn), self.c(ff), vocab_size,group_attn, dropout), 
                     N, d_model, vocab_size, self.c(word_embed),  dropout)
-        self.outputHead = Aspect_Based_SA_Output(dropout , d_model, 4, num_categories ) # 4 class label
+        self.outputHead = Topic_SA_Output( d_model, 4, 3 ) # 4 topic label and 3 sentiment class
 
         
         
 
-    def forward(self, inputs, mask, categories):
+    def forward(self, inputs, mask):
         _, hiddenStates ,_= self.encoder.forward(inputs, mask)
         
-        output = self.outputHead.forward(hiddenStates, categories )
+        output = self.outputHead.forward(hiddenStates)
         return output
 
 
@@ -205,7 +235,7 @@ class BaseEncoder(nn.Module):
         super(BaseEncoder, self).__init__()
         self.word_embed = word_embed
         self.layers = clones(layer, N)
-        # self.intermidiate = IntermidiateOutput( d_model, vocab_size)
+        self.intermidiate = IntermidiateOutput( d_model, vocab_size)
         self.output = EncoderOutputLayer(dropout, d_model, d_model)
         
         
@@ -221,7 +251,7 @@ class BaseEncoder(nn.Module):
             hidden_states.append(x)
         
 
-        # x= self.intermidiate(x)
+        x= self.intermidiate(x)
       
        
    
@@ -238,7 +268,7 @@ class BaseEncoder(nn.Module):
 
 
 class ABSA_transfomer(nn.Module): 
-    def __init__(self, vocab_size, N=12, d_model=768, d_ff=2048, h=12, dropout=0.1, num_categories= 10, no_cuda= False):
+    def __init__(self, vocab_size, N=12, d_model=768, d_ff=2048, h=12, dropout=0.1, no_cuda= False):
         super(ABSA_transfomer, self).__init__()
         "Helper: Construct a model from hyperparameters."
         self.no_cuda=  no_cuda
@@ -250,15 +280,15 @@ class ABSA_transfomer(nn.Module):
         word_embed = nn.Sequential(Embeddings(d_model, vocab_size), self.c(position))
         self.encoder = BaseEncoder(BaseEncoderLayer(d_model, self.c(attn), self.c(ff), vocab_size, dropout), 
                     N, d_model, vocab_size, self.c(word_embed),  dropout)
-        self.outputHead = Aspect_Based_SA_Output(dropout , d_model, 4, num_categories ) # 4 class label
+        self.outputHead = Topic_SA_Output( d_model, 4, 3 ) # 4 topic label and 3 sentiment class
 
         
         
 
-    def forward(self, inputs, mask, categories):
-        _, hiddenStates = self.encoder.forward(inputs, mask)
-
-        output = self.outputHead.forward(hiddenStates, categories )
+    def forward(self, inputs, mask):
+        _, hiddenStates= self.encoder.forward(inputs, mask)
+        
+        output = self.outputHead.forward(hiddenStates)
         return output
 
 
