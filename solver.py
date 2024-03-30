@@ -85,7 +85,7 @@ class Solver():
                 mask = batch['attention_mask'].to(device)
                 labels = batch['labels'].to(device)
 
-                output = self.model(inputs, mask, self.categories)
+                output = self.model(inputs, mask, self.data_util.categories)
 
                 output = torch.sigmoid(output)
                 output = output.float()
@@ -155,7 +155,7 @@ class Solver():
                 mask = batch['attention_mask'].to(device)
                 labels = batch['labels'].to(device)
 
-                output = self.model(inputs, mask, self.categories)
+                output = self.model(inputs, mask, self.data_util.categories)
 
                 output = torch.sigmoid(output)
                 output = output.float()
@@ -273,14 +273,14 @@ class Solver():
                 epoch_progress.update(1)
                 epoch_progress.set_postfix({'Loss': loss.item()})
 
-                if (step + 1) % 100 == 0:
+                if (step + 1) % 10 == 0:
                     elapsed = time.time() - start
                     print(f'Epoch [{epoch + 1}/{self.args.epoch}], Step [{step + 1}/{len(self.data_util.train_loader)}], '
                         f'Loss: {loss.item():.4f}, Total Time: {elapsed:.2f} sec')
-                    # aspect , sentiment = self.evaluate_aspect_sentiment_accuracy2()
+                    aspect , sentiment = self.evaluate()
                
-                    # print(f"Epoch {epoch} Validation accuracy (Aspect): ", aspect)
-                    # print(f"Epoch {epoch} Validation accuracy (Sentiment): ", sentiment)
+                    print(f"Epoch {epoch} Validation accuracy (Aspect): ", aspect)
+                    print(f"Epoch {epoch} Validation accuracy (Sentiment): ", sentiment)
             epoch_progress.close()
             #Valid stage 
             aspect , sentiment = self.evaluate()
