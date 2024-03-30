@@ -13,4 +13,8 @@ python test.py -train_path ./data/train.txt -model_dir ./Model
 
 # Testing
 
-python main.py -load -test -seq_length 512 -batch_size 32 -model_dir ./Model/ABSA/model_base_bertbase_epoch_50.pth -train_path ./data/UIT-ViSFD/Train.csv -valid_path ./data/UIT-ViSFD/Dev.csv -test_path ./data/UIT-ViSFD/Test.csv
+python main.py -tree -load -test -seq_length 512 -batch_size 32 -model_dir ./Model/VSF/Bert_base_Segment -train_path ./data/UIT-VSF/Train.csv -valid_path ./data/UIT-VSF/Dev.csv -test_path ./data/UIT-VSF/Test.csv
+
+segment
+
+python main.py -load -test -seq_length 512 -batch_size 32 -model_dir ./Model/VSF/Bert_base_Segment -train_path ./data/UIT-VSF/SegTrain.csv -valid_path ./data/UIT-VSF/SegDev.csv -test_path ./data/UIT-VSF/SegTest.csv
