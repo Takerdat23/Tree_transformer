@@ -257,7 +257,7 @@ class Solver():
                 tt += ttt
         print('total_param_num:',tt)
         if (self.args.wandb_api != ""):
-            wandb.init(project="UIT-VSF", name="training ABSA")
+            wandb.init(project=self.args.wandb_Project, name=self.args.wandb_RunName)
 
 
         self.model.to(device)
