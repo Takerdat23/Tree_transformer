@@ -22,20 +22,25 @@ class Solver():
 
         self.data_util = data_utils(args)
         self.vocab_size = 64000
+
+        modelConfig =  read_json("./model_config.json")
    
     
         if args.wandb_api != "": 
 
             wandb.login(key=args.wandb_api)
 
-   
-    
+
+
+        if args.tree: 
+            self.model = ABSA_Tree_transfomer(  vocab_size= self.vocab_size, N = modelConfig['N_layer'], d_model= modelConfig['d_model'], 
+                                          d_ff= modelConfig['d_ff'], h= modelConfig['heads'], dropout = modelConfig['dropout'], no_cuda=args.no_cuda)
+        else: 
+
+            self.model = ABSA_transfomer( vocab_size= self.vocab_size, N = modelConfig['N_layer'], d_model= modelConfig['d_model'], 
+                                          d_ff= modelConfig['d_ff'], h= modelConfig['heads'], dropout = modelConfig['dropout'], no_cuda=args.no_cuda)
         
-        # self.model = ABSA_transfomer( vocab_size= self.vocab_size, N= 12, d_model= 768, 
-        #                                   d_ff= 2048, h= 12, dropout = 0.1, no_cuda=args.no_cuda)
         
-        self.model = ABSA_Tree_transfomer(  vocab_size= self.vocab_size, N= 12, d_model= 768, 
-                                          d_ff= 2048, h= 12, dropout = 0.1, no_cuda=args.no_cuda)
         
        
 

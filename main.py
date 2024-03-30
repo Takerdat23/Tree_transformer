@@ -11,6 +11,7 @@ def parse():
     parser.add_argument('-epoch', type=int, default=10, help='sequence length')
     parser.add_argument('-data_dir',default='data_dir',help='data dir')
     parser.add_argument('-load',action='store_true',help='load pretrained model')
+    parser.add_argument('-tree',action='store_true',help='load pretrained model')
     parser.add_argument('-segment',action='store_true',help='segment or not')
     parser.add_argument('-train', action='store_true',help='whether train the model')
     parser.add_argument('-test', action='store_true',help='whether test')
