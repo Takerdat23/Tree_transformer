@@ -13,8 +13,8 @@ python test.py -train_path ./data/train.txt -model_dir ./Model
 
 # Testing
 
-python main.py -tree -load -test -seq_length 512 -batch_size 32 -model_dir ./Model/VSF/Bert_base_Segment -train_path ./data/UIT-VSF/Train.csv -valid_path ./data/UIT-VSF/Dev.csv -test_path ./data/UIT-VSF/Test.csv
+python main.py -tree -load -test -seq_length 512 -batch_size 32 -model_dir ./Model/VSF/Original_transformer_tree -train_path ./data/UIT-VSF/Train.csv -valid_path ./data/UIT-VSF/Dev.csv -test_path ./data/UIT-VSF/Test.csv
 
 segment
 
-python main.py -load -test -seq_length 512 -batch_size 32 -model_dir ./Model/VSF/Bert_base_Segment -train_path ./data/UIT-VSF/SegTrain.csv -valid_path ./data/UIT-VSF/SegDev.csv -test_path ./data/UIT-VSF/SegTest.csv
+python main.py -load -test -seq_length 512 -batch_size 32 -model_dir ./Model/VSF/Original_Transformer_segment -train_path ./data/UIT-VSF/SegTrain.csv -valid_path ./data/UIT-VSF/SegDev.csv -test_path ./data/UIT-VSF/SegTest.csv
