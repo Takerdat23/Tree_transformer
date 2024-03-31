@@ -120,14 +120,16 @@ class Solver():
         sentiment_recall = recall_score(all_sentiment_ground_truth.flatten(), all_sentiment_predictions.flatten(), average='weighted')
         sentiment_f1 = f1_score(all_sentiment_ground_truth.flatten(), all_sentiment_predictions.flatten(), average='weighted')
 
-        wandb.log({
+        result = {
             "Val Aspect Precision": aspect_precision,
             "Val Aspect Recall": aspect_recall,
             "Val Aspect F1 Score": aspect_f1,
             "Val Sentiment Precision": sentiment_precision,
             "Val Sentiment Recall": sentiment_recall,
             "Val Sentiment F1 Score": sentiment_f1
-        })
+        }
+
+        print(result)
 
 
 
@@ -184,14 +186,15 @@ class Solver():
         sentiment_recall = recall_score(all_sentiment_ground_truth.flatten(), all_sentiment_predictions.flatten(), average='weighted')
         sentiment_f1 = f1_score(all_sentiment_ground_truth.flatten(), all_sentiment_predictions.flatten(), average='weighted')
 
-        wandb.log({
+        ressult = {
             "Test Aspect Precision": aspect_precision,
             "Test Aspect Recall": aspect_recall,
             "Test Aspect F1 Score": aspect_f1,
             "Test Sentiment Precision": sentiment_precision,
             "Test Sentiment Recall": sentiment_recall,
             "Test Sentiment F1 Score": sentiment_f1
-        })
+        }
+        print(ressult)
 
         return aspect_precision, aspect_recall, aspect_f1, sentiment_precision, sentiment_recall, sentiment_f1
 
