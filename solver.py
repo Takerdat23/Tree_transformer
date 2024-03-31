@@ -270,7 +270,7 @@ class Solver():
                 loss.backward()
                 optim.step()
                 if (self.args.wandb_api != ""):
-                    wandb.log({"Loss": loss.item()}, step=epoch*len(self.data_util.train_loader) + step)
+                    wandb.log({"Loss": loss.item()})
                 epoch_progress.update(1)
                 epoch_progress.set_postfix({'Loss': loss.item()})
 
