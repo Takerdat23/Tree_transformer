@@ -34,12 +34,11 @@ class Solver():
 
         if args.tree: 
             self.model = ABSA_Tree_transfomer(  vocab_size= self.vocab_size, N = modelConfig['N_layer'], d_model= modelConfig['d_model'], 
-                                          d_ff= modelConfig['d_ff'], h= modelConfig['heads'], dropout = modelConfig['dropout'], no_cuda=args.no_cuda)
+                                          d_ff= modelConfig['d_ff'], h= modelConfig['heads'], num_categories = len(self.data_util.categories),   dropout = modelConfig['dropout'], no_cuda=args.no_cuda)
         else: 
 
             self.model = ABSA_transfomer( vocab_size= self.vocab_size, N = modelConfig['N_layer'], d_model= modelConfig['d_model'], 
-                                          d_ff= modelConfig['d_ff'], h= modelConfig['heads'], dropout = modelConfig['dropout'], no_cuda=args.no_cuda)
-        
+                                          d_ff= modelConfig['d_ff'], h= modelConfig['heads'],num_categories = len(self.data_util.categories) ,  dropout = modelConfig['dropout'], no_cuda=args.no_cuda)
         
         
        
@@ -73,79 +72,68 @@ class Solver():
         self.model.to(device)
         self.model.eval()
 
-        all_topic_predictions = []
+        all_aspect_predictions = []
         all_sentiment_predictions = []
-        all_topic_ground_truth = []
+        all_aspect_ground_truth = []
         all_sentiment_ground_truth = []
 
         with torch.no_grad():
-            progress = tqdm(total=len(self.data_util.val_loader), position=0)
-            for step, batch in tqdm(enumerate(self.data_util.val_loader)):
-                
+            for step, batch in enumerate(self.data_util.val_loader):
                 inputs = batch['input_ids'].to(device)
                 mask = batch['attention_mask'].to(device)
-                topics  = batch['topic'].to(device)
-                sentiments = batch['sentiment'].to(device)
+                labels = batch['labels'].to(device)
 
-      
-                topic_output, sentiment_output = self.model(inputs, mask)
+                output = self.model(inputs, mask, self.data_util.categories)
 
-               
-               
-            
-                # Calculate loss
+                output = torch.sigmoid(output)
+                output = output.float()
 
-                topic_probs = torch.sigmoid(topic_output)
-              
-               
-                sentiment_probs = torch.sigmoid(sentiment_output)
+                aspect_predictions = (output[:, :, 0] > 0.5).long()
+                sentiment_predictions = (output[:, :, 1:] > 0.5).long()
 
-                _, topic_predictions = torch.max(topic_probs , dim = 1)
-                _ , sentiment_predictions = torch.max(sentiment_probs , dim = 1)
+                aspect_ground_truth = labels[:, :, 0].long()
+                sentiment_ground_truth = labels[:, :, 1:].long()
 
-                _, topic_groundtruth = torch.max(topics , dim = 1)
-                _, sentiment_groundtruth = torch.max(sentiments , dim = 1)
-
-
-
-
-                all_topic_predictions.append(topic_predictions.cpu().numpy())
+                all_aspect_predictions.append(aspect_predictions.cpu().numpy())
                 all_sentiment_predictions.append(sentiment_predictions.cpu().numpy())
-                all_topic_ground_truth.append(topic_groundtruth.cpu().numpy())
-                all_sentiment_ground_truth.append(sentiment_groundtruth.cpu().numpy())
+                all_aspect_ground_truth.append(aspect_ground_truth.cpu().numpy())
+                all_sentiment_ground_truth.append(sentiment_ground_truth.cpu().numpy())
 
-                progress.update(1)
-
-        all_topic_predictions = np.concatenate(all_topic_predictions)
+        all_aspect_predictions = np.concatenate(all_aspect_predictions)
         all_sentiment_predictions = np.concatenate(all_sentiment_predictions)
-        all_topic_ground_truth = np.concatenate(all_topic_ground_truth)
+        all_aspect_ground_truth = np.concatenate(all_aspect_ground_truth)
         all_sentiment_ground_truth = np.concatenate(all_sentiment_ground_truth)
 
         
-        print(all_topic_ground_truth.shape)
-        print(all_topic_predictions.shape)
 
 
-        aspect_precision = precision_score(all_topic_ground_truth.flatten(), all_topic_predictions.flatten(), average='weighted')
-        aspect_recall = recall_score(all_topic_ground_truth.flatten(), all_topic_predictions.flatten(), average='weighted')
-        topic_f1 = f1_score(all_topic_ground_truth.flatten(), all_topic_predictions.flatten(), average='weighted')
+        all_aspect_predictions = np.concatenate(all_aspect_predictions)
+        all_sentiment_predictions = np.concatenate(all_sentiment_predictions)
+        all_aspect_ground_truth = np.concatenate(all_aspect_ground_truth)
+        all_sentiment_ground_truth = np.concatenate(all_sentiment_ground_truth)
+
+        aspect_precision = precision_score(all_aspect_ground_truth.flatten(), all_aspect_predictions.flatten())
+        aspect_recall = recall_score(all_aspect_ground_truth.flatten(), all_aspect_predictions.flatten())
+        aspect_f1 = f1_score(all_aspect_ground_truth.flatten(), all_aspect_predictions.flatten())
 
         sentiment_precision = precision_score(all_sentiment_ground_truth.flatten(), all_sentiment_predictions.flatten(), average='weighted')
         sentiment_recall = recall_score(all_sentiment_ground_truth.flatten(), all_sentiment_predictions.flatten(), average='weighted')
         sentiment_f1 = f1_score(all_sentiment_ground_truth.flatten(), all_sentiment_predictions.flatten(), average='weighted')
 
-        print("Aspect Precision:", aspect_precision)
-        print("Aspect Recall:", aspect_recall)
-        print("Aspect F1 Score:", topic_f1)
+        wandb.log({
+            "Val Aspect Precision": aspect_precision,
+            "Val Aspect Recall": aspect_recall,
+            "Val Aspect F1 Score": aspect_f1,
+            "Val Sentiment Precision": sentiment_precision,
+            "Val Sentiment Recall": sentiment_recall,
+            "Val Sentiment F1 Score": sentiment_f1
+        })
 
-        print("Sentiment Precision:", sentiment_precision)
-        print("Sentiment Recall:", sentiment_recall)
-        print("Sentiment F1 Score:", sentiment_f1)
 
 
         
 
-        return topic_f1, sentiment_f1
+        return aspect_f1, sentiment_f1
     
     def test(self):
         if self.args.no_cuda == False:
@@ -156,79 +144,56 @@ class Solver():
         self.model.to(device)
         self.model.eval()
 
-        all_topic_predictions = []
+        all_aspect_predictions = []
         all_sentiment_predictions = []
-        all_topic_ground_truth = []
+        all_aspect_ground_truth = []
         all_sentiment_ground_truth = []
 
         with torch.no_grad():
-            progress = tqdm(total=len(self.data_util.test_loader), position=0)
-            for step, batch in tqdm(enumerate(self.data_util.test_loader)):
-                
+            for step, batch in enumerate(self.data_util.test_loader):
                 inputs = batch['input_ids'].to(device)
                 mask = batch['attention_mask'].to(device)
-                topics  = batch['topic'].to(device)
-                sentiments = batch['sentiment'].to(device)
+                labels = batch['labels'].to(device)
 
-      
-                topic_output, sentiment_output = self.model(inputs, mask)
+                output = self.model(inputs, mask, self.data_util.categories)
 
-               
-               
-            
-                # Calculate loss
+                output = torch.sigmoid(output)
+                output = output.float()
 
-                topic_probs = torch.sigmoid(topic_output)
-              
-               
-                sentiment_probs = torch.sigmoid(sentiment_output)
+                aspect_predictions = (output[:, :, 0] > 0.5).long()
+                sentiment_predictions = (output[:, :, 1:] > 0.5).long()
 
-                _, topic_predictions = torch.max(topic_probs , dim = 1)
-                _ , sentiment_predictions = torch.max(sentiment_probs , dim = 1)
+                aspect_ground_truth = labels[:, :, 0].long()
+                sentiment_ground_truth = labels[:, :, 1:].long()
 
-                _, topic_groundtruth = torch.max(topics , dim = 1)
-                _, sentiment_groundtruth = torch.max(sentiments , dim = 1)
-
-
-
-
-                all_topic_predictions.append(topic_predictions.cpu().numpy())
+                all_aspect_predictions.append(aspect_predictions.cpu().numpy())
                 all_sentiment_predictions.append(sentiment_predictions.cpu().numpy())
-                all_topic_ground_truth.append(topic_groundtruth.cpu().numpy())
-                all_sentiment_ground_truth.append(sentiment_groundtruth.cpu().numpy())
+                all_aspect_ground_truth.append(aspect_ground_truth.cpu().numpy())
+                all_sentiment_ground_truth.append(sentiment_ground_truth.cpu().numpy())
 
-                progress.update(1)
-
-        all_topic_predictions = np.concatenate(all_topic_predictions)
+        all_aspect_predictions = np.concatenate(all_aspect_predictions)
         all_sentiment_predictions = np.concatenate(all_sentiment_predictions)
-        all_topic_ground_truth = np.concatenate(all_topic_ground_truth)
+        all_aspect_ground_truth = np.concatenate(all_aspect_ground_truth)
         all_sentiment_ground_truth = np.concatenate(all_sentiment_ground_truth)
 
-        
-        print(all_topic_ground_truth.shape)
-        print(all_topic_predictions.shape)
-
-
-        topic_precision = precision_score(all_topic_ground_truth.flatten(), all_topic_predictions.flatten(), average='weighted')
-        topic_recall = recall_score(all_topic_ground_truth.flatten(), all_topic_predictions.flatten(), average='weighted')
-        topic_f1 = f1_score(all_topic_ground_truth.flatten(), all_topic_predictions.flatten(), average='weighted')
+        aspect_precision = precision_score(all_aspect_ground_truth.flatten(), all_aspect_predictions.flatten())
+        aspect_recall = recall_score(all_aspect_ground_truth.flatten(), all_aspect_predictions.flatten())
+        aspect_f1 = f1_score(all_aspect_ground_truth.flatten(), all_aspect_predictions.flatten())
 
         sentiment_precision = precision_score(all_sentiment_ground_truth.flatten(), all_sentiment_predictions.flatten(), average='weighted')
         sentiment_recall = recall_score(all_sentiment_ground_truth.flatten(), all_sentiment_predictions.flatten(), average='weighted')
         sentiment_f1 = f1_score(all_sentiment_ground_truth.flatten(), all_sentiment_predictions.flatten(), average='weighted')
 
-        print("Aspect Precision:", topic_precision)
-        print("Aspect Recall:", topic_recall)
-        print("Aspect F1 Score:", topic_f1)
+        wandb.log({
+            "Test Aspect Precision": aspect_precision,
+            "Test Aspect Recall": aspect_recall,
+            "Test Aspect F1 Score": aspect_f1,
+            "Test Sentiment Precision": sentiment_precision,
+            "Test Sentiment Recall": sentiment_recall,
+            "Test Sentiment F1 Score": sentiment_f1
+        })
 
-        print("Sentiment Precision:", sentiment_precision)
-        print("Sentiment Recall:", sentiment_recall)
-        print("Sentiment F1 Score:", sentiment_f1)
-
-
-        
-
-        return topic_precision,  topic_recall, topic_f1, sentiment_precision, sentiment_recall, sentiment_f1
+        return aspect_precision, aspect_recall, aspect_f1, sentiment_precision, sentiment_recall, sentiment_f1
 
    
     
@@ -284,28 +249,19 @@ class Solver():
             for step, batch in enumerate(self.data_util.train_loader):
                 inputs = batch['input_ids'].to(device)
                 mask = batch['attention_mask'].to(device)
-                topics  = batch['topic'].to(device)
-                sentiments = batch['sentiment'].to(device)
+                labels = batch['labels'].to(device)
 
                 optim.zero_grad()
-                topic_output, sentiment_output = self.model(inputs, mask)
-
-               
-               
+                output = self.model.forward(inputs, mask, self.data_util.categories)  # Assuming categories are not used for now
             
                 # Calculate loss
-
-                topic_probs = torch.sigmoid(topic_output)
               
+                output = torch.sigmoid(output)
+                output = output.float()
+                labels = labels.float()
+
                
-                sentiment_probs = torch.sigmoid(sentiment_output)
-          
-                
-                topic_loss = F.binary_cross_entropy_with_logits( topic_probs, topics )
-
-                sentiment_loss = F.binary_cross_entropy_with_logits(sentiment_probs ,sentiments )
-
-                loss = topic_loss + sentiment_loss
+                loss = F.binary_cross_entropy(output, labels)
                 
                 # loss = self.model.masked_lm_loss(output, labels)
                 total_loss.append(loss.item())
@@ -322,18 +278,18 @@ class Solver():
                     elapsed = time.time() - start
                     print(f'Epoch [{epoch + 1}/{self.args.epoch}], Step [{step + 1}/{len(self.data_util.train_loader)}], '
                         f'Loss: {loss.item():.4f}, Total Time: {elapsed:.2f} sec')
-                    # topic , sentiment = self.evaluate()
+                    # aspect , sentiment = self.evaluate()
                
-                    # print(f"Epoch {epoch} Validation accuracy (Aspect): ", topic)
+                    # print(f"Epoch {epoch} Validation accuracy (Aspect): ", aspect)
                     # print(f"Epoch {epoch} Validation accuracy (Sentiment): ", sentiment)
             epoch_progress.close()
             #Valid stage 
-            topic , sentiment = self.evaluate()
+            aspect , sentiment = self.evaluate()
                
-            print(f"Epoch {epoch} Validation accuracy (Aspect): ", topic)
+            print(f"Epoch {epoch} Validation accuracy (Aspect): ", aspect)
             print(f"Epoch {epoch} Validation accuracy (Sentiment): ", sentiment)
 
-            combined_accuracy = (topic + sentiment) / 2
+            combined_accuracy = (aspect + sentiment) / 2
             if (self.args.wandb_api != ""):
               
                 wandb.log({"Validation Accuracy": combined_accuracy})
@@ -342,6 +298,3 @@ class Solver():
                 
                  
         self.save_model(self.model, optim, self.args.epoch, step, self.model_dir)
-
-
- 
