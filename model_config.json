@@ -1,7 +1,7 @@
 { 
-    "N_layer":6, 
-    "d_model": 512, 
-    "d_ff": 2048, 
-    "heads": 8, 
+    "N_layer":24, 
+    "d_model": 1024, 
+    "d_ff": 4096, 
+    "heads": 16, 
     "dropout" :0.1
 }
