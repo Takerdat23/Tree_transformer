@@ -57,7 +57,7 @@ class Solver():
         print(self.model)
     
     def LoadPretrain(self): 
-        path = os.path.join(self.args.model_dir, "ABSA", "segment_bert_base.pth")
+        path = os.path.join(self.args.model_dir, "model_epoch_50.pth")
         return self.model.load_state_dict(torch.load(path)['model_state_dict'])
     
   
@@ -198,7 +198,7 @@ class Solver():
    
     
     def save_model(self, model, optimizer, epoch, step, model_dir):
-        model_name = f'model_epoch_{epoch}_step_{step}.pth'
+        model_name = f'model_epoch_{epoch}.pth'
         state = {
             'epoch': epoch,
             'step': step,
