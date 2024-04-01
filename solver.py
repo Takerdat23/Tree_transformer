@@ -23,7 +23,17 @@ class Solver():
         self.data_util = data_utils(args)
         self.vocab_size = 64000
 
-        modelConfig =  read_json("./model_config.json")
+        if args.config: 
+            
+
+            modelConfig = json.loads(args.config)
+   
+        else: 
+
+
+            modelConfig =  read_json("./model_config.json")
+   
+    
    
     
         if args.wandb_api != "": 

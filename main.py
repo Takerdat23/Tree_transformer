@@ -1,6 +1,6 @@
 import argparse
 from solver import Solver
-
+import json
 def parse():
     parser = argparse.ArgumentParser(description="tree transformer")
     parser.add_argument('-no_cuda', action='store_true', help="Don't use GPUs.")
@@ -13,6 +13,7 @@ def parse():
     parser.add_argument('-load',action='store_true',help='load pretrained model')
     parser.add_argument('-tree',action='store_true',help='load pretrained model')
     parser.add_argument('-segment',action='store_true',help='segment or not')
+    parser.add_argument('-config', default=None, type=str, help="Model config" )
     parser.add_argument('-train', action='store_true',help='whether train the model')
     parser.add_argument('-test', action='store_true',help='whether test')
     parser.add_argument('-valid_path',default='data/valid.txt',help='validation data path')
