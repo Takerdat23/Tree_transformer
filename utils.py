@@ -210,6 +210,8 @@ class data_utils():
         self.no_cuda = args.no_cuda
         self.train_path = args.train_path
 
+        
+
         df_train = pd.read_csv(args.train_path,  encoding = 'utf8') 
   
         df_val = pd.read_csv(args.valid_path,  encoding = 'utf8')
