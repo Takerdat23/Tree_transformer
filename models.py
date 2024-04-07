@@ -9,8 +9,8 @@ from modules import *
 from transformers import BertModel, BertConfig
 
 
-class Topic_SA_Output(nn.Module): 
-    def __init__(self, d_input, topic_output, sentiment_output):
+class NLI_Output(nn.Module): 
+    def __init__(self, dropout , d_input, Num_labels):
         """
         Initialization 
         dropout: dropout percent
@@ -18,62 +18,26 @@ class Topic_SA_Output(nn.Module):
         d_output: output dimension 
         categories: categories list
         """
-        super(Topic_SA_Output, self).__init__()
-        self.Topicdense = nn.Linear(d_input , topic_output,  bias=True)
-        self.SentimentDense = nn.Linear(d_input , sentiment_output,  bias=True)
-     
-   
-    
-
-    def forward(self, model_output ):
-        """ 
-         x : Model output 
-         categories: aspect, categories  
-         Output: sentiment output 
-        """
-        pooled_output = model_output[-1][: , 0 , :]
-
-        topic = self.Topicdense(pooled_output )
-
-        sentiment = self.SentimentDense(pooled_output)
-
-        return topic , sentiment
-
-
-
-
-    
-class Aspect_Based_SA_Output(nn.Module): 
-    def __init__(self, dropout , d_input, d_output, num_categories):
-        """
-        Initialization 
-        dropout: dropout percent
-        d_input: Model dimension 
-        d_output: output dimension 
-        categories: categories list
-        """
-        super(Aspect_Based_SA_Output, self).__init__()
-        self.dense = nn.Linear(d_input * 4 , d_output *num_categories ,  bias=True)
+        super(NLI_Output, self).__init__()
+        self.dense = nn.Linear(d_input ,Num_labels ,  bias=True)
         # self.softmax = nn.Softmax(dim=-1) 
-        self.norm = nn.LayerNorm(d_output, eps=1e-12)
+        self.norm = nn.LayerNorm(Num_labels, eps=1e-12)
         self.dropout = nn.Dropout(dropout)
-        self.num_categories = num_categories
-        self.num_labels= d_output
+        self.num_labels= Num_labels
 
-    def forward(self, model_output ,categories ):
+    def forward(self, encoder_output ):
         """ 
          x : Model output 
          categories: aspect, categories  
          Output: sentiment output 
         """
-        pooled_output = torch.cat([model_output[i] for i in range(-4, 0)], dim=-1)[: , 0 , :]
+        pooled_output = encoder_output
 
       
-      
+        x= self.norm(x)
         x = self.dropout(pooled_output)
         output = self.dense(x)
-        # Reshape the output to match the required dimensions
-        output = output.view(-1, self.num_categories, self.num_labels)
+     
         return output
 
 
@@ -179,28 +143,28 @@ class EncoderLayer(nn.Module):
     
         return x, group_prob, break_prob
     
-class ABSA_Tree_transfomer(nn.Module): 
-    def __init__(self, vocab_size, N=12, d_model=768, d_ff=2048, h=12, dropout=0.1, num_categories= 10, no_cuda= False):
-        super(ABSA_Tree_transfomer, self).__init__()
+class Tree_transfomer(nn.Module): 
+    def __init__(self, vocab_size, N=12, d_model=768, d_ff=2048, h=12, dropout=0.1, no_cuda= False):
+        super(Tree_transfomer, self).__init__()
         "Helper: Construct a model from hyperparameters."
         self.no_cuda=  no_cuda
         self.c = copy.deepcopy
-        self.attn = MultiHeadedAttention(h, d_model, no_cuda=self.no_cuda)
-        self.group_attn = GroupAttention(d_model, no_cuda=self.no_cuda)
-        self.ff = PositionwiseFeedForward(d_model, d_ff, dropout)
-        self.position = PositionalEncoding(d_model, 128)
-        self.word_embed = nn.Sequential(Embeddings(d_model, vocab_size), self.c(self.position))
-        self.encoder = Encoder(EncoderLayer(d_model, self.c(self.attn), self.c(self.ff), vocab_size, self.group_attn, dropout), 
-                    N, d_model, vocab_size, self.c(self.word_embed),  dropout)
-        self.outputHead = Aspect_Based_SA_Output(dropout , d_model, 4, num_categories ) # 4 class label
+        attn = MultiHeadedAttention(h, d_model, no_cuda=self.no_cuda)
+        group_attn = GroupAttention(d_model, no_cuda=self.no_cuda)
+        ff = PositionwiseFeedForward(d_model, d_ff, dropout)
+        position = PositionalEncoding(d_model, 128)
+        word_embed = nn.Sequential(Embeddings(d_model, vocab_size), self.c(position))
+        self.encoder = Encoder(EncoderLayer(d_model, self.c(attn), self.c(ff), vocab_size, group_attn, dropout), 
+                    N, d_model, vocab_size, self.c(word_embed),  dropout)
+        self.outputHead = NLI_Output(dropout , d_model, 4) # 4 class label
 
         
         
 
     def forward(self, inputs, mask, categories):
-        _, hiddenStates ,_= self.encoder.forward(inputs, mask)
+        x ,  _ ,_= self.encoder.forward(inputs, mask)
         
-        output = self.outputHead.forward(hiddenStates, categories )
+        output = self.outputHead.forward(x )
         return output
 
 
@@ -267,28 +231,28 @@ class BaseEncoder(nn.Module):
         pass
 
 
-class ABSA_transfomer(nn.Module): 
-    def __init__(self, vocab_size, N=12, d_model=768, d_ff=2048, h=12, num_categories = 10 ,  dropout=0.1, no_cuda= False):
-        super(ABSA_transfomer, self).__init__()
+class Transfomer(nn.Module): 
+    def __init__(self, vocab_size, N=12, d_model=768, d_ff=2048, h=12 ,  dropout=0.1, no_cuda= False):
+        super(Transfomer, self).__init__()
         "Helper: Construct a model from hyperparameters."
 
         self.no_cuda=  no_cuda
         self.c = copy.deepcopy
-        self.attn = MultiHeadedAttention(h, d_model, no_cuda=self.no_cuda)
-        self.ff = PositionwiseFeedForward(d_model, d_ff, dropout)
-        self.position = PositionalEncoding(d_model, 128)
-        self.word_embed = nn.Sequential(Embeddings(d_model, vocab_size), self.c(self.position))
-        self.encoder = BaseEncoder(BaseEncoderLayer(d_model, self.c(self.attn), self.c(self.ff), vocab_size, dropout), 
-                    N, d_model, vocab_size, self.c(self.word_embed),  dropout)
-        self.outputHead = Aspect_Based_SA_Output(dropout , d_model, 4, num_categories ) # 4 class label
+        attn = MultiHeadedAttention(h, d_model, no_cuda=self.no_cuda)
+        ff = PositionwiseFeedForward(d_model, d_ff, dropout)
+        position = PositionalEncoding(d_model, 128)
+        word_embed = nn.Sequential(Embeddings(d_model, vocab_size), self.c(position))
+        self.encoder = BaseEncoder(BaseEncoderLayer(d_model, self.c(attn), self.c(ff), vocab_size, dropout), 
+                    N, d_model, vocab_size, self.c(word_embed),  dropout)
+        self.outputHead = NLI_Output(dropout , d_model, 4) # 4 class label
 
         
         
 
     def forward(self, inputs, mask, categories):
-        _, hiddenStates= self.encoder.forward(inputs, mask)
+        x, _= self.encoder.forward(inputs, mask)
       
-        output = self.outputHead.forward(hiddenStates, categories)
+        output = self.outputHead.forward(x)
         return output
     
 

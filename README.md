@@ -13,5 +13,5 @@ python test.py -train_path ./data/train.txt -model_dir ./Model
 
 # Testing
 
-python main.py -tree -load -test -seq_length 512 -batch_size 32 -model_dir ./Model/ViSFD/Tree_original/ -train_path ./data/UIT-ViSFD/Train.csv -valid_path ./data/UIT-ViSFD/Dev.csv -test_path ./data/UIT-ViSFD/Test.csv
+python main.py -load -test -seq_length 512 -batch_size 32 -model_dir ./Model/ViSFD/No_segment_AIAYN/ -train_path ./data/UIT-ViSFD/Train.csv -valid_path ./data/UIT-ViSFD/Dev.csv -test_path ./data/UIT-ViSFD/Test.csv
 

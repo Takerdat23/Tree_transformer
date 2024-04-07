@@ -41,12 +41,16 @@ class Solver():
 
 
         if args.tree: 
-            self.model = ABSA_Tree_transfomer(  vocab_size= self.vocab_size, N = modelConfig['N_layer'], d_model= modelConfig['d_model'], 
-                                          d_ff= modelConfig['d_ff'], h= modelConfig['heads'], num_categories = len(self.data_util.categories),   dropout = modelConfig['dropout'], no_cuda=args.no_cuda)
+            self.model = ABSA_Tree_transfomer(  vocab_size= self.vocab_size, N = modelConfig['N_layer'], 
+                                          d_model= modelConfig['d_model'], 
+                                          d_ff= modelConfig['d_ff'], h= modelConfig['heads'],   
+                                          dropout = modelConfig['dropout'], no_cuda=args.no_cuda)
         else: 
 
-            self.model = ABSA_transfomer( vocab_size= self.vocab_size, N = modelConfig['N_layer'], d_model= modelConfig['d_model'], 
-                                          d_ff= modelConfig['d_ff'], h= modelConfig['heads'],num_categories = len(self.data_util.categories) ,  dropout = modelConfig['dropout'], no_cuda=args.no_cuda)
+            self.model = ABSA_transfomer( vocab_size= self.vocab_size, N = modelConfig['N_layer'], 
+                                          d_model= modelConfig['d_model'], 
+                                          d_ff= modelConfig['d_ff'], h= modelConfig['heads'] ,  
+                                          dropout = modelConfig['dropout'], no_cuda=args.no_cuda)
         
         
        
@@ -263,7 +267,7 @@ class Solver():
                 labels = batch['labels'].to(device)
 
                 optim.zero_grad()
-                output = self.model.forward(inputs, mask, self.data_util.categories)  # Assuming categories are not used for now
+                output = self.model.forward(inputs, mask)  # Assuming categories are not used for now
             
                 # Calculate loss
               
@@ -271,7 +275,7 @@ class Solver():
                 output = output.float()
                 labels = labels.float()
 
-               
+
                 loss = F.binary_cross_entropy(output, labels)
                 
                 # loss = self.model.masked_lm_loss(output, labels)
