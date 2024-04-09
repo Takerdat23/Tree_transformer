@@ -113,20 +113,20 @@ class DataCollator:
         attention_mask = torch.tensor([encoded.attention_mask for encoded in encoded_batch])
 
  
-     
+        padded_span = []
         for span in spans:
             if len(span) < max_length:
-                spans.append(span + [0] * (max_length - len(span)))
+                padded_span.append(span + [0] * (max_length - len(span)))
             else:
-                spans.append(span[:max_length])
+                padded_span.append(span[:max_length])
 
-        spans = torch.tensor(spans)
+        padded_span = torch.tensor(padded_span)
        
 
       
         return {"input_ids": input_ids,
                 "attention_mask": attention_mask,
-                "spans": spans}
+                "spans": padded_span}
 
 
 class data_utils():
