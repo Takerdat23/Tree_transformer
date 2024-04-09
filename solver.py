@@ -41,13 +41,13 @@ class Solver():
 
 
         if args.tree: 
-            self.model = ABSA_Tree_transfomer(  vocab_size= self.vocab_size, N = modelConfig['N_layer'], 
+            self.model = Tree_transfomer(  vocab_size= self.vocab_size, N = modelConfig['N_layer'], 
                                           d_model= modelConfig['d_model'], 
                                           d_ff= modelConfig['d_ff'], h= modelConfig['heads'],   
                                           dropout = modelConfig['dropout'], no_cuda=args.no_cuda)
         else: 
 
-            self.model = ABSA_transfomer( vocab_size= self.vocab_size, N = modelConfig['N_layer'], 
+            self.model = Transfomer( vocab_size= self.vocab_size, N = modelConfig['N_layer'], 
                                           d_model= modelConfig['d_model'], 
                                           d_ff= modelConfig['d_ff'], h= modelConfig['heads'] ,  
                                           dropout = modelConfig['dropout'], no_cuda=args.no_cuda)
@@ -93,7 +93,7 @@ class Solver():
             for step, batch in enumerate(self.data_util.val_loader):
                 inputs = batch['input_ids'].to(device)
                 mask = batch['attention_mask'].to(device)
-                labels = batch['labels'].to(device)
+                labels = batch['spans'].to(device)
 
                 output = self.model(inputs, mask, self.data_util.categories)
 

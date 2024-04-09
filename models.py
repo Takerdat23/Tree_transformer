@@ -8,37 +8,26 @@ from torch.nn import GELU
 from modules import *
 from transformers import BertModel, BertConfig
 
+    
 
-class NLI_Output(nn.Module): 
-    def __init__(self, dropout , d_input, Num_labels):
-        """
-        Initialization 
-        dropout: dropout percent
-        d_input: Model dimension 
-        d_output: output dimension 
-        categories: categories list
-        """
-        super(NLI_Output, self).__init__()
-        self.dense = nn.Linear(d_input ,Num_labels ,  bias=True)
-        # self.softmax = nn.Softmax(dim=-1) 
-        self.norm = nn.LayerNorm(Num_labels, eps=1e-12)
+class SpansDetectOutput(nn.Module):
+    def __init__(self, dropout , d_input):
+        super(SpansDetectOutput, self).__init__()
+   
+        self.span_classifier = nn.Linear(d_input, 1)
         self.dropout = nn.Dropout(dropout)
-        self.num_labels= Num_labels
 
     def forward(self, encoder_output ):
-        """ 
-         x : Model output 
-         categories: aspect, categories  
-         Output: sentiment output 
-        """
-        pooled_output = encoder_output
-
-      
-        x= self.norm(x)
-        x = self.dropout(pooled_output)
-        output = self.dense(x)
      
-        return output
+        last_hidden_state = encoder_output
+        last_hidden_state = self.dropout(last_hidden_state)
+        span_logits = self.span_classifier(last_hidden_state)
+
+        span_logits = span_logits.permute(0, 2, 1)
+        span_logits = torch.sigmoid(span_logits)
+        span_logits = span_logits.permute(0, 2, 1)
+
+        return  span_logits
 
 
 
@@ -156,7 +145,7 @@ class Tree_transfomer(nn.Module):
         word_embed = nn.Sequential(Embeddings(d_model, vocab_size), self.c(position))
         self.encoder = Encoder(EncoderLayer(d_model, self.c(attn), self.c(ff), vocab_size, group_attn, dropout), 
                     N, d_model, vocab_size, self.c(word_embed),  dropout)
-        self.outputHead = NLI_Output(dropout , d_model, 4) # 4 class label
+        self.outputHead = SpansDetectOutput(dropout , d_model) 
 
         
         
@@ -244,12 +233,11 @@ class Transfomer(nn.Module):
         word_embed = nn.Sequential(Embeddings(d_model, vocab_size), self.c(position))
         self.encoder = BaseEncoder(BaseEncoderLayer(d_model, self.c(attn), self.c(ff), vocab_size, dropout), 
                     N, d_model, vocab_size, self.c(word_embed),  dropout)
-        self.outputHead = NLI_Output(dropout , d_model, 4) # 4 class label
-
+        self.outputHead = SpansDetectOutput(dropout , d_model)
         
         
 
-    def forward(self, inputs, mask, categories):
+    def forward(self, inputs, mask):
         x, _= self.encoder.forward(inputs, mask)
       
         output = self.outputHead.forward(x)

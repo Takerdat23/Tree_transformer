@@ -21,7 +21,7 @@ from tokenizers import ByteLevelBPETokenizer
 from tokenizers.processors import BertProcessing
 import json 
 from underthesea import word_tokenize
-import py_vncorenlp
+
 
 def read_json(filename):
     with open(filename, 'r') as fp:
@@ -44,38 +44,36 @@ def make_save_dir(save_dir):
 
 
 
-def process_NLI(df, num_labels):
-   
-    dataset = []
-   
-    for _, row in df.iterrows():
-        data_dict = {}
- 
-        data_dict["Premise"] = row['Premise']
-        
-        # Convert sentiment and topic to one-hot encoded tensors
-        label =row['label']
-       
-        oneHot_label = torch.zeros(num_labels)
-        if label == "Entailment": 
-            oneHot_label[0] = 1
-        elif label == "Contradiction" : 
-            oneHot_label[1] = 1 
-        elif label == "Neutral": 
-            oneHot_label[2] = 1 
-        else: 
-            oneHot_label[3] = 1
-        
-     
-        
-     
-    
-        data_dict["Label"] =   oneHot_label
-        dataset.append(data_dict)
+def prepare_data(file_path):
+    df = pd.read_csv(file_path,  encoding = 'utf8')
 
+    # remove nan
+    df = df.dropna()
+    df = df.reset_index(drop=True)
+
+    dataset = []
+
+    texts = df['content'].tolist()
+    spans = df['index_spans'].tolist()
+
+    # convert spans to binary representation
+
+    for text , span in zip(texts,  spans):
+        data_dict = {}
+        binary_span = []
+        span = span.split(' ')
+        for s in span:
+            if s == 'O':
+                binary_span.append(0)
+            else:
+                binary_span.append(1)
+        data_dict["text"] = text
+        data_dict["span"] = binary_span
+        dataset.append(data_dict)
+        
     return dataset
 
-
+# Dataloader function
 
 
 
@@ -91,13 +89,13 @@ def cc(arr, no_cuda=False):
 
 
 
-class SentimentDataCollator:
+class DataCollator:
     def __init__(self, tokenizer):
         self.tokenizer = tokenizer
 
     def __call__(self, batch):
-        inputs = [example["comment"] for example in batch]
-        labels = [example["label"] for example in batch]
+        inputs = [example["text"] for example in batch]
+        spans = [example["span"] for example in batch]
 
 
         encoded_batch = [self.tokenizer.encode(sentence) for sentence in inputs]
@@ -116,13 +114,19 @@ class SentimentDataCollator:
 
  
      
-        labels_tensor = torch.stack(labels)
+        for span in spans:
+            if len(span) < max_length:
+                spans.append(span + [0] * (max_length - len(span)))
+            else:
+                spans.append(span[:max_length])
+
+        spans = torch.tensor(spans)
        
 
       
         return {"input_ids": input_ids,
                 "attention_mask": attention_mask,
-                "labels": labels_tensor}
+                "spans": spans}
 
 
 class data_utils():
@@ -133,8 +137,10 @@ class data_utils():
         self.train_path = args.train_path
 
         df_train = pd.read_csv(args.train_path,  encoding = 'utf8') 
+        df_train = df_train.dropna()
+        df_train = df_train.reset_index(drop=True)
   
-        df_val = pd.read_csv(args.valid_path,  encoding = 'utf8')
+     
         
         if os.path.exists(os.path.join(args.model_dir,"vocab.json" )) and os.path.exists(os.path.join(args.model_dir,"merges.txt" )): 
             # self.tokenizer = AutoTokenizer.from_pretrained("vinai/phobert-base")
@@ -145,27 +151,25 @@ class data_utils():
             
             tokenizer = ByteLevelBPETokenizer()
 
-            tokenizer.train_from_iterator(df_train["comment"], vocab_size=30000, min_frequency=2,
+            tokenizer.train_from_iterator(df_train["content"], vocab_size=30000, min_frequency=2,
                               special_tokens=["[UNK]", "[CLS]", "[SEP]", "[PAD]", "[MASK]"])
             tokenizer.save_model(args.model_dir)
             self.tokenizer = ByteLevelBPETokenizer.from_file( os.path.join(args.model_dir,"vocab.json" ), \
                                                              os.path.join(args.model_dir,"merges.txt" ))
 
           
-        data_collator = SentimentDataCollator(self.tokenizer)
+        data_collator = DataCollator(self.tokenizer)
        
-        dataset = process_NLI(df_train)
-        val_dataset =  process_NLI(df_val)
+        dataset = prepare_data(args.train_path)
+        val_dataset =  prepare_data(args.valid_path)
         
         self.train_loader = DataLoader(dataset, batch_size=args.batch_size, collate_fn=data_collator)
         self.val_loader =DataLoader(val_dataset, batch_size=args.batch_size, collate_fn=data_collator)
 
 
         if args.test : 
-
-            df_test = pd.read_csv(args.test_path,  encoding = 'utf8')
         
-            test_dataset = process_NLI(df_test)
+            test_dataset = prepare_data(args.test_path)
             self.test_loader =DataLoader(test_dataset, batch_size=args.batch_size, collate_fn=data_collator)
       
 
