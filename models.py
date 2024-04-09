@@ -191,7 +191,7 @@ class BaseEncoder(nn.Module):
         self.word_embed = word_embed
         self.layers = clones(layer, N)
         self.intermidiate = IntermidiateOutput( d_model, vocab_size)
-        self.output = EncoderOutputLayer(dropout, d_model, d_model)
+        self.output = EncoderOutputLayer(dropout, vocab_size, d_model)
         
         
 
@@ -208,7 +208,7 @@ class BaseEncoder(nn.Module):
 
         x= self.intermidiate(x)
       
-       
+        x = self.output(x)
    
         return x, hidden_states
 
