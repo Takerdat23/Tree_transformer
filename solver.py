@@ -239,6 +239,9 @@ class Solver():
                     # print(f"Epoch {epoch} Validation accuracy: ", Score)
                     # print(f"Epoch {epoch} Validation accuracy (Sentiment): ", sentiment)
             epoch_progress.close()
+
+
+
             #Valid stage 
             precision, recall,  span_f1 = self.evaluate()
                
@@ -253,18 +256,19 @@ class Solver():
                 wandb.log({"Validation F1_score": span_f1})
 
             
-            #testing
             
-            precision, recall,  span_f1= self.test()
-
-            if (self.args.wandb_api != ""):
-              
-                wandb.log({"Test Precision": precision})
-                wandb.log({"Test Recall": recall})
-                wandb.log({"Test F1-score": span_f1})
 
            
                     
                 
-                 
+        #testing
+            
+        precision, recall,  span_f1= self.test()
+
+        if (self.args.wandb_api != ""):
+              
+            wandb.log({"Test Precision": precision})
+            wandb.log({"Test Recall": recall})
+            wandb.log({"Test F1-score": span_f1})    
+              
         self.save_model(self.model, optim, self.args.epoch, step, self.model_dir)
