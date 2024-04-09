@@ -118,7 +118,7 @@ class Solver():
 
         print(result)
 
-        return span_f1
+        return precision, recall,  span_f1
     
     def test(self):
         if self.args.no_cuda == False:
@@ -152,17 +152,8 @@ class Solver():
         recall = recall_score(span_targets, span_preds, average='weighted')
         span_f1 = f1_score(span_targets, span_preds, average='weighted')
 
-       
 
-
-
-        result = {
-            "Test Span Precision": precision,
-            "Test Span Recall": recall,
-            "Test Span F1 Score": span_f1
-        }
-
-        return span_f1
+        return precision, recall,  span_f1
     
     def save_model(self, model, optimizer, epoch, step, model_dir):
         model_name = f'model_epoch_{epoch}.pth'
@@ -249,15 +240,29 @@ class Solver():
                     # print(f"Epoch {epoch} Validation accuracy (Sentiment): ", sentiment)
             epoch_progress.close()
             #Valid stage 
-            aspect , sentiment = self.evaluate()
+            precision, recall,  span_f1 = self.evaluate()
                
-            print(f"Epoch {epoch} Validation accuracy (Aspect): ", aspect)
-            print(f"Epoch {epoch} Validation accuracy (Sentiment): ", sentiment)
+            print(f"Epoch {epoch} Validation accuracy: ",  precision)
 
-            combined_accuracy = (aspect + sentiment) / 2
+            
+            if (self.args.wandb_api != ""):
+                
+              
+                wandb.log({"Validation Accuracy": precision})
+                wandb.log({"Validation Recall": recall})
+                wandb.log({"Validation F1_score": span_f1})
+
+            
+            #testing
+            
+            precision, recall,  span_f1= self.test()
+
             if (self.args.wandb_api != ""):
               
-                wandb.log({"Validation Accuracy": combined_accuracy})
+                wandb.log({"Test Precision": precision})
+                wandb.log({"Test Recall": recall})
+                wandb.log({"Test F1-score": span_f1})
+
            
                     
                 
