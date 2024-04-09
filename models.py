@@ -78,7 +78,7 @@ class Encoder(nn.Module):
         self.word_embed = word_embed
         self.layers = clones(layer, N)
         self.intermidiate = IntermidiateOutput( d_model, vocab_size)
-        self.output = EncoderOutputLayer(dropout, d_model, d_model)
+        self.output = EncoderOutputLayer(dropout, vocab_size, d_model)
         
         
 
@@ -95,6 +95,8 @@ class Encoder(nn.Module):
 
        
         x= self.intermidiate(x)
+
+        x= self.output(x)
        
         break_probs = torch.stack(break_probs, dim=1)
         return x, hidden_states, break_probs
@@ -150,7 +152,7 @@ class Tree_transfomer(nn.Module):
         
         
 
-    def forward(self, inputs, mask, categories):
+    def forward(self, inputs, mask):
         x ,  _ ,_= self.encoder.forward(inputs, mask)
         
         output = self.outputHead.forward(x )

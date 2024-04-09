@@ -248,6 +248,7 @@ class Solver():
      
         optim = torch.optim.Adam(self.model.parameters(), lr=1e-4, betas=(0.9, 0.98), eps=1e-9)
         #optim = BertAdam(self.model.parameters(), lr=1e-4)
+        criterion_span = nn.BCELoss()
      
         
         total_loss = []
@@ -262,24 +263,21 @@ class Solver():
             epoch_progress = tqdm(total=len(self.data_util.train_loader), desc=f'Epoch {epoch+1}/{self.args.epoch}', position=0)
 
             for step, batch in enumerate(self.data_util.train_loader):
-                inputs = batch['input_ids'].to(device)
-                mask = batch['attention_mask'].to(device)
-                labels = batch['labels'].to(device)
+                input_ids = batch['input_ids'].squeeze(1).to(device)
+                attention_mask = batch['attention_mask'].to(device)
+                spans = batch['spans'].float().to(device)
 
                 optim.zero_grad()
-                output = self.model.forward(inputs, mask)  # Assuming categories are not used for now
+                span_logits = self.model(input_ids, attention_mask)
+                loss_span = criterion_span(span_logits.squeeze(), spans)
+
+                loss = loss_span
             
-                # Calculate loss
-              
-                output = torch.sigmoid(output)
-                output = output.float()
-                labels = labels.float()
 
-
-                loss = F.binary_cross_entropy(output, labels)
-                
-                # loss = self.model.masked_lm_loss(output, labels)
+         
+           
                 total_loss.append(loss.item())
+
 
                 # Backpropagation
                 loss.backward()
