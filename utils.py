@@ -43,38 +43,74 @@ def make_save_dir(save_dir):
 
 
 
-
-def process_NLI(df, num_labels):
-   
+def createNLIdataset(path): 
+    with open(path , 'r') as json_file:
+        json_list = list(json_file) 
     dataset = []
-   
-    for _, row in df.iterrows():
-        data_dict = {}
- 
-        data_dict["Premise"] = row['Premise']
-        
-        # Convert sentiment and topic to one-hot encoded tensors
-        label =row['label']
-       
-        oneHot_label = torch.zeros(num_labels)
-        if label == "Entailment": 
-            oneHot_label[0] = 1
-        elif label == "Contradiction" : 
-            oneHot_label[1] = 1 
-        elif label == "Neutral": 
-            oneHot_label[2] = 1 
-        else: 
-            oneHot_label[3] = 1
-        
-     
-        
-     
-    
-        data_dict["Label"] =   oneHot_label
-        dataset.append(data_dict)
 
+
+    for json_str in json_list:
+        instance1 = {}
+        instance2 = {}
+
+        result = json.loads(json_str)
+        hypo1 = result['sentence1']
+        hypo2 = result['sentence2']
+
+        context = result['context']
+        label = result['gold_label']
+
+        label_vector = [0, 0 , 0 ,0]
+        if label == "entailment": 
+            label_vector[0] = 1
+        elif label == "contradiction": 
+            label_vector[1] = 1 
+        elif label == "neutral": 
+            label_vector[2] = 1 
+        elif label == "other": 
+            label_vector[3] = 1 
+
+        instance1['premise'] = context
+        instance1['hypo'] = hypo1
+        instance1['label']= label_vector
+
+        
+
+        dataset.append(instance1)
+
+
+        instance2['premise'] = context
+        instance2['hypo'] = hypo2
+        instance2['label']= label_vector
+        dataset.append(instance2)
     return dataset
 
+
+def getTokenizerData(path): 
+    with open(path , 'r') as json_file:
+        json_list = list(json_file) 
+    dataset = []
+
+
+    for json_str in json_list:
+        instance = {}
+
+        result = json.loads(json_str)
+        hypo1 = result['sentence1']
+        hypo2 = result['sentence2']
+
+        context = result['context']
+
+        text1 = hypo1 + " " + context
+
+        dataset.append(text1)
+
+        text2 = hypo2 + " " + context
+
+        dataset.append(text2)
+    
+
+    return dataset
 
 
 
@@ -91,16 +127,17 @@ def cc(arr, no_cuda=False):
 
 
 
-class SentimentDataCollator:
+class NLIDataCollator:
     def __init__(self, tokenizer):
         self.tokenizer = tokenizer
 
     def __call__(self, batch):
-        inputs = [example["comment"] for example in batch]
+        hypos = [example["hypo"] for example in batch]
+        premises = [example["premise"] for example in batch]
         labels = [example["label"] for example in batch]
 
 
-        encoded_batch = [self.tokenizer.encode(sentence) for sentence in inputs]
+        encoded_batch = [self.tokenizer.encode(hypo + " " + premise) for hypo, premise in zip(hypos  , premises)]
 
         # Get the maximum sequence length
         max_length = 128
@@ -132,10 +169,8 @@ class data_utils():
         self.no_cuda = args.no_cuda
         self.train_path = args.train_path
 
-        df_train = pd.read_csv(args.train_path,  encoding = 'utf8') 
-  
-        df_val = pd.read_csv(args.valid_path,  encoding = 'utf8')
-        
+        text_data = getTokenizerData(args.train_path)
+
         if os.path.exists(os.path.join(args.model_dir,"vocab.json" )) and os.path.exists(os.path.join(args.model_dir,"merges.txt" )): 
             # self.tokenizer = AutoTokenizer.from_pretrained("vinai/phobert-base")
             self.tokenizer = ByteLevelBPETokenizer.from_file( os.path.join(args.model_dir,"vocab.json" ), os.path.join(args.model_dir,"merges.txt" ))
@@ -145,17 +180,17 @@ class data_utils():
             
             tokenizer = ByteLevelBPETokenizer()
 
-            tokenizer.train_from_iterator(df_train["comment"], vocab_size=30000, min_frequency=2,
+            tokenizer.train_from_iterator(text_data, vocab_size=30000, min_frequency=2,
                               special_tokens=["[UNK]", "[CLS]", "[SEP]", "[PAD]", "[MASK]"])
             tokenizer.save_model(args.model_dir)
             self.tokenizer = ByteLevelBPETokenizer.from_file( os.path.join(args.model_dir,"vocab.json" ), \
                                                              os.path.join(args.model_dir,"merges.txt" ))
 
           
-        data_collator = SentimentDataCollator(self.tokenizer)
+        data_collator = NLIDataCollator(self.tokenizer)
        
-        dataset = process_NLI(df_train)
-        val_dataset =  process_NLI(df_val)
+        dataset = createNLIdataset(args.train_path)
+        val_dataset =  createNLIdataset(args.valid_path)
         
         self.train_loader = DataLoader(dataset, batch_size=args.batch_size, collate_fn=data_collator)
         self.val_loader =DataLoader(val_dataset, batch_size=args.batch_size, collate_fn=data_collator)
@@ -163,9 +198,8 @@ class data_utils():
 
         if args.test : 
 
-            df_test = pd.read_csv(args.test_path,  encoding = 'utf8')
-        
-            test_dataset = process_NLI(df_test)
+          
+            test_dataset = createNLIdataset(args.test_path)
             self.test_loader =DataLoader(test_dataset, batch_size=args.batch_size, collate_fn=data_collator)
       
 
