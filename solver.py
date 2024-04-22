@@ -84,71 +84,44 @@ class Solver():
         self.model.to(device)
         self.model.eval()
 
-        all_aspect_predictions = []
-        all_sentiment_predictions = []
-        all_aspect_ground_truth = []
-        all_sentiment_ground_truth = []
+        preds = []
+        targets = []
 
         with torch.no_grad():
             for step, batch in enumerate(self.data_util.val_loader):
                 inputs = batch['input_ids'].to(device)
                 mask = batch['attention_mask'].to(device)
-                labels = batch['labels'].to(device)
+                labels = batch['labels'].float().to(device)
 
-                output = self.model(inputs, mask, self.data_util.categories)
+                with torch.no_grad():
+                    pred_logits = self.model(inputs,mask)
 
-                output = torch.sigmoid(output)
-                output = output.float()
+                preds.append(pred_logits.squeeze().cpu().numpy().flatten())
+                targets.append(labels.cpu().numpy().flatten())
 
-                aspect_predictions = (output[:, :, 0] > 0.5).long()
-                sentiment_predictions = (output[:, :, 1:] > 0.5).long()
+        preds = np.concatenate(preds)
+        targets = np.concatenate(targets)
+        preds = (preds > 0.5).astype(int)
 
-                aspect_ground_truth = labels[:, :, 0].long()
-                sentiment_ground_truth = labels[:, :, 1:].long()
+        precision = precision_score(targets , preds, average='macro')
+        recall = recall_score(targets , preds, average='macro')
+        f1 = f1_score(targets , preds, average='macro')
 
-                all_aspect_predictions.append(aspect_predictions.cpu().numpy())
-                all_sentiment_predictions.append(sentiment_predictions.cpu().numpy())
-                all_aspect_ground_truth.append(aspect_ground_truth.cpu().numpy())
-                all_sentiment_ground_truth.append(sentiment_ground_truth.cpu().numpy())
-
-        all_aspect_predictions = np.concatenate(all_aspect_predictions)
-        all_sentiment_predictions = np.concatenate(all_sentiment_predictions)
-        all_aspect_ground_truth = np.concatenate(all_aspect_ground_truth)
-        all_sentiment_ground_truth = np.concatenate(all_sentiment_ground_truth)
-
-        
+       
 
 
-        all_aspect_predictions = np.concatenate(all_aspect_predictions)
-        all_sentiment_predictions = np.concatenate(all_sentiment_predictions)
-        all_aspect_ground_truth = np.concatenate(all_aspect_ground_truth)
-        all_sentiment_ground_truth = np.concatenate(all_sentiment_ground_truth)
-
-        aspect_precision = precision_score(all_aspect_ground_truth.flatten(), all_aspect_predictions.flatten())
-        aspect_recall = recall_score(all_aspect_ground_truth.flatten(), all_aspect_predictions.flatten())
-        aspect_f1 = f1_score(all_aspect_ground_truth.flatten(), all_aspect_predictions.flatten())
-
-        sentiment_precision = precision_score(all_sentiment_ground_truth.flatten(), all_sentiment_predictions.flatten(), average='weighted')
-        sentiment_recall = recall_score(all_sentiment_ground_truth.flatten(), all_sentiment_predictions.flatten(), average='weighted')
-        sentiment_f1 = f1_score(all_sentiment_ground_truth.flatten(), all_sentiment_predictions.flatten(), average='weighted')
 
         result = {
-            "Val Aspect Precision": aspect_precision,
-            "Val Aspect Recall": aspect_recall,
-            "Val Aspect F1 Score": aspect_f1,
-            "Val Sentiment Precision": sentiment_precision,
-            "Val Sentiment Recall": sentiment_recall,
-            "Val Sentiment F1 Score": sentiment_f1
+            "Val Precision": precision,
+            "Val Recall": recall,
+            "Val F1 Score": f1
         }
 
         print(result)
 
+        return precision, recall,  f1
 
 
-        
-
-        return aspect_f1, sentiment_f1
-    
     def test(self):
         if self.args.no_cuda == False:
             device = "cuda"
@@ -158,57 +131,42 @@ class Solver():
         self.model.to(device)
         self.model.eval()
 
-        all_aspect_predictions = []
-        all_sentiment_predictions = []
-        all_aspect_ground_truth = []
-        all_sentiment_ground_truth = []
+        preds = []
+        targets = []
 
         with torch.no_grad():
             for step, batch in enumerate(self.data_util.test_loader):
                 inputs = batch['input_ids'].to(device)
                 mask = batch['attention_mask'].to(device)
-                labels = batch['labels'].to(device)
+                labels = batch['labels'].float().to(device)
 
-                output = self.model(inputs, mask, self.data_util.categories)
+                with torch.no_grad():
+                    pred_logits = self.model(inputs,mask)
 
-                output = torch.sigmoid(output)
-                output = output.float()
+                preds.append(pred_logits.squeeze().cpu().numpy().flatten())
+                targets.append(labels.cpu().numpy().flatten())
 
-                aspect_predictions = (output[:, :, 0] > 0.5).long()
-                sentiment_predictions = (output[:, :, 1:] > 0.5).long()
+        preds = np.concatenate(preds)
+        targets = np.concatenate(targets)
+        preds = (preds > 0.5).astype(int)
 
-                aspect_ground_truth = labels[:, :, 0].long()
-                sentiment_ground_truth = labels[:, :, 1:].long()
+        precision = precision_score(targets , preds, average='macro')
+        recall = recall_score(targets , preds, average='macro')
+        f1 = f1_score(targets , preds, average='macro')
 
-                all_aspect_predictions.append(aspect_predictions.cpu().numpy())
-                all_sentiment_predictions.append(sentiment_predictions.cpu().numpy())
-                all_aspect_ground_truth.append(aspect_ground_truth.cpu().numpy())
-                all_sentiment_ground_truth.append(sentiment_ground_truth.cpu().numpy())
+       
 
-        all_aspect_predictions = np.concatenate(all_aspect_predictions)
-        all_sentiment_predictions = np.concatenate(all_sentiment_predictions)
-        all_aspect_ground_truth = np.concatenate(all_aspect_ground_truth)
-        all_sentiment_ground_truth = np.concatenate(all_sentiment_ground_truth)
 
-        aspect_precision = precision_score(all_aspect_ground_truth.flatten(), all_aspect_predictions.flatten())
-        aspect_recall = recall_score(all_aspect_ground_truth.flatten(), all_aspect_predictions.flatten())
-        aspect_f1 = f1_score(all_aspect_ground_truth.flatten(), all_aspect_predictions.flatten())
 
-        sentiment_precision = precision_score(all_sentiment_ground_truth.flatten(), all_sentiment_predictions.flatten(), average='weighted')
-        sentiment_recall = recall_score(all_sentiment_ground_truth.flatten(), all_sentiment_predictions.flatten(), average='weighted')
-        sentiment_f1 = f1_score(all_sentiment_ground_truth.flatten(), all_sentiment_predictions.flatten(), average='weighted')
-
-        ressult = {
-            "Test Aspect Precision": aspect_precision,
-            "Test Aspect Recall": aspect_recall,
-            "Test Aspect F1 Score": aspect_f1,
-            "Test Sentiment Precision": sentiment_precision,
-            "Test Sentiment Recall": sentiment_recall,
-            "Test Sentiment F1 Score": sentiment_f1
+        result = {
+            "test Precision": precision,
+            "test Recall": recall,
+            "test F1 Score": f1
         }
-        print(ressult)
 
-        return aspect_precision, aspect_recall, aspect_f1, sentiment_precision, sentiment_recall, sentiment_f1
+        print(result)
+
+        return precision, recall,  f1
 
    
     
@@ -289,14 +247,13 @@ class Solver():
                 epoch_progress.update(1)
                 epoch_progress.set_postfix({'Loss': loss.item()})
 
-                if (step + 1) % 100 == 0:
+                if (step + 1) % 10 == 0:
                     elapsed = time.time() - start
                     print(f'Epoch [{epoch + 1}/{self.args.epoch}], Step [{step + 1}/{len(self.data_util.train_loader)}], '
                         f'Loss: {loss.item():.4f}, Total Time: {elapsed:.2f} sec')
-                    # aspect , sentiment = self.evaluate()
+                    precision, recall,  f1 = self.evaluate()
                
-                    # print(f"Epoch {epoch} Validation accuracy (Aspect): ", aspect)
-                    # print(f"Epoch {epoch} Validation accuracy (Sentiment): ", sentiment)
+                    
             epoch_progress.close()
             #Valid stage 
             aspect , sentiment = self.evaluate()

@@ -60,7 +60,7 @@ def createNLIdataset(path):
         context = result['context']
         label = result['gold_label']
 
-        label_vector = [0, 0 , 0 ,0]
+        label_vector = torch.zeros(4)
         if label == "entailment": 
             label_vector[0] = 1
         elif label == "contradiction": 
@@ -151,15 +151,13 @@ class NLIDataCollator:
         input_ids = torch.tensor([encoded.ids for encoded in encoded_batch])
         attention_mask = torch.tensor([encoded.attention_mask for encoded in encoded_batch])
 
- 
-     
-        labels_tensor = torch.stack(labels)
-       
+        labels = torch.stack(labels)
+
 
       
         return {"input_ids": input_ids,
                 "attention_mask": attention_mask,
-                "labels": labels_tensor}
+                "labels": labels}
 
 
 class data_utils():

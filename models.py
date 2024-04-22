@@ -21,7 +21,7 @@ class NLI_Output(nn.Module):
         super(NLI_Output, self).__init__()
         self.dense = nn.Linear(d_input ,Num_labels ,  bias=True)
         # self.softmax = nn.Softmax(dim=-1) 
-        self.norm = nn.LayerNorm(Num_labels, eps=1e-12)
+        self.norm = nn.LayerNorm(d_input, eps=1e-12)
         self.dropout = nn.Dropout(dropout)
         self.num_labels= Num_labels
 
@@ -31,11 +31,12 @@ class NLI_Output(nn.Module):
          categories: aspect, categories  
          Output: sentiment output 
         """
-        pooled_output = encoder_output
 
+        print(encoder_output.shape)
+        x = encoder_output[: , 0 , :]
       
         x= self.norm(x)
-        x = self.dropout(pooled_output)
+        x = self.dropout(x)
         output = self.dense(x)
      
         return output
@@ -52,9 +53,9 @@ class EncoderOutputLayer(nn.Module):
             (dropout): Dropout(p=0.1, inplace=False)
           )
     """
-    def __init__(self, dropout , d_input, d_output):
+    def __init__(self, dropout , d_input, d_output, vocab_size):
         super(EncoderOutputLayer, self).__init__()
-        self.dense = nn.Linear(d_input, d_output, bias=True)
+        self.dense = nn.Linear(vocab_size, d_output, bias=True)
         self.norm = nn.LayerNorm(d_output, eps=1e-05)
         self.dropout = nn.Dropout(dropout)
 
@@ -89,7 +90,7 @@ class Encoder(nn.Module):
         self.word_embed = word_embed
         self.layers = clones(layer, N)
         self.intermidiate = IntermidiateOutput( d_model, vocab_size)
-        self.output = EncoderOutputLayer(dropout, d_model, d_model)
+        self.output = EncoderOutputLayer(dropout, d_model, d_model, vocab_size)
         
         
 
@@ -106,7 +107,7 @@ class Encoder(nn.Module):
 
        
         x= self.intermidiate(x)
-       
+        x= self.output(x)
         break_probs = torch.stack(break_probs, dim=1)
         return x, hidden_states, break_probs
 
@@ -161,7 +162,7 @@ class Tree_transfomer(nn.Module):
         
         
 
-    def forward(self, inputs, mask, categories):
+    def forward(self, inputs, mask):
         x ,  _ ,_= self.encoder.forward(inputs, mask)
         
         output = self.outputHead.forward(x )
@@ -200,7 +201,7 @@ class BaseEncoder(nn.Module):
         self.word_embed = word_embed
         self.layers = clones(layer, N)
         self.intermidiate = IntermidiateOutput( d_model, vocab_size)
-        self.output = EncoderOutputLayer(dropout, d_model, d_model)
+        self.output = EncoderOutputLayer(dropout, d_model, d_model, vocab_size)
         
         
 
@@ -216,6 +217,8 @@ class BaseEncoder(nn.Module):
         
 
         x= self.intermidiate(x)
+
+        x= self.output(x)
       
        
    
@@ -249,7 +252,7 @@ class Transfomer(nn.Module):
         
         
 
-    def forward(self, inputs, mask, categories):
+    def forward(self, inputs, mask):
         x, _= self.encoder.forward(inputs, mask)
       
         output = self.outputHead.forward(x)
