@@ -246,21 +246,17 @@ class Solver():
                     elapsed = time.time() - start
                     print(f'Epoch [{epoch + 1}/{self.args.epoch}], Step [{step + 1}/{len(self.data_util.train_loader)}], '
                         f'Loss: {loss.item():.4f}, Total Time: {elapsed:.2f} sec')
-                    # aspect , sentiment = self.evaluate()
-               
-                    # print(f"Epoch {epoch} Validation accuracy (Aspect): ", aspect)
-                    # print(f"Epoch {epoch} Validation accuracy (Sentiment): ", sentiment)
+                 
             epoch_progress.close()
             #Valid stage 
-            aspect , sentiment = self.evaluate()
+            precision, recall,  f1 = self.evaluate()
                
-            print(f"Epoch {epoch} Validation accuracy (Aspect): ", aspect)
-            print(f"Epoch {epoch} Validation accuracy (Sentiment): ", sentiment)
+        
 
-            combined_accuracy = (aspect + sentiment) / 2
+        
             if (self.args.wandb_api != ""):
               
-                wandb.log({"Validation Accuracy": combined_accuracy})
+                wandb.log({"Validation Accuracy": precision})
            
                     
                 
