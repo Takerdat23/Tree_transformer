@@ -6,7 +6,8 @@ from attention import *
 from torch.nn import CrossEntropyLoss
 from torch.nn import GELU
 from modules import *
-from transformers import BertModel, BertConfig
+from transformers import BertModel, BertConfig, AutoTokenizer, AutoModelForSeq2SeqLM, AutoModel
+
 
 
 class Topic_SA_Output(nn.Module): 
@@ -178,6 +179,36 @@ class EncoderLayer(nn.Module):
 
     
         return x, group_prob, break_prob
+
+class Constituent_Pretrained_transfomer(nn.Module): 
+    def __init__(self, vocab_size, N=12, d_model=768, d_ff=2048, h=12, dropout=0.1, no_cuda= False):
+        super(Constituent_Pretrained_transfomer, self).__init__()
+        "Helper: Construct a model from hyperparameters."
+        self.no_cuda=  no_cuda
+        self.c = copy.deepcopy
+        attn = MultiHeadedAttention(h, d_model, no_cuda=self.no_cuda)
+        group_attn = GroupAttention(d_model, no_cuda=self.no_cuda)
+        ff = PositionwiseFeedForward(d_model, d_ff, dropout)
+        self.position = PositionalEncoding(d_model, 128)
+        self.word_embed = nn.Sequential(Embeddings(d_model, vocab_size), self.c(self.position))
+        self.constituent_Module= EncoderLayer(d_model, self.c(attn), self.c(ff), vocab_size, group_attn, dropout) 
+        self.encoder = AutoModel.from_pretrained("vinai/phobert-base").encoder 
+        self.outputHead = Aspect_Based_SA_Output(dropout , d_model, 4, num_categories ) # 4 class label
+
+        
+        
+
+    def forward(self, inputs, mask, categories):
+        x = self.word_embed(inputs)
+        group_prob = 0.
+        x,group_prob,break_prob = self.constituent_Module(x, mask,group_prob)
+        x = self.encoder.forward(x, mask)
+        
+        output = self.outputHead.forward(x , categories )
+        return output
+
+
+
     
 class ABSA_Tree_transfomer(nn.Module): 
     def __init__(self, vocab_size, N=12, d_model=768, d_ff=2048, h=12, dropout=0.1, num_categories= 10, no_cuda= False):
