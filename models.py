@@ -180,8 +180,27 @@ class EncoderLayer(nn.Module):
     
         return x, group_prob, break_prob
 
+
+class Constituent_Modules(nn.Module):
+    def __init__(self, layer, N):
+        super(Constituent_Modules, self).__init__()
+        
+        self.layers = clones(layer, N)
+
+    def forward(self, inputs, mask):
+        group_prob = 0.
+        break_probs = []
+        for layer in self.layers:
+            x, group_prob, break_prob = layer(inputs, mask, group_prob)
+       
+            break_probs.append(break_prob)
+        break_probs = torch.stack(break_probs, dim=1)
+        return x,  break_probs
+
+
+
 class Constituent_Pretrained_transfomer(nn.Module): 
-    def __init__(self, vocab_size, N=12, d_model=768, d_ff=2048, h=12, dropout=0.1, num_categories= 10, no_cuda= False):
+    def __init__(self, vocab_size, N=12, M = 3, d_model=768, d_ff=2048, h=12, dropout=0.1, num_categories= 10, no_cuda= False):
         super(Constituent_Pretrained_transfomer, self).__init__()
         "Helper: Construct a model from hyperparameters."
         self.no_cuda=  no_cuda
@@ -191,7 +210,7 @@ class Constituent_Pretrained_transfomer(nn.Module):
         ff = PositionwiseFeedForward(d_model, d_ff, dropout)
         self.position = PositionalEncoding(d_model, 128)
         self.word_embed = nn.Sequential(Embeddings(d_model, vocab_size), self.c(self.position))
-        self.constituent_Module= EncoderLayer(d_model, self.c(attn), self.c(ff), vocab_size, group_attn, dropout) 
+        self.constituent_Modules= Constituent_Modules( EncoderLayer(d_model, self.c(attn), self.c(ff), vocab_size, group_attn, dropout), M )
         self.encoder = AutoModel.from_pretrained("vinai/phobert-base").encoder 
 
         for param in self.encoder.parameters():
@@ -249,11 +268,7 @@ class Constituent_Pretrained_transfomer(nn.Module):
     def forward(self, inputs, mask, categories):
         x = self.word_embed(inputs)
 
-        
-
-        
-        group_prob = 0.
-        x,group_prob,break_prob = self.constituent_Module(x, mask,group_prob)
+        x, _ = self.constituent_Modules(x, mask)
 
        
 
