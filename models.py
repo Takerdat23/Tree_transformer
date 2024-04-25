@@ -181,7 +181,7 @@ class EncoderLayer(nn.Module):
         return x, group_prob, break_prob
 
 class Constituent_Pretrained_transfomer(nn.Module): 
-    def __init__(self, vocab_size, N=12, d_model=768, d_ff=2048, h=12, dropout=0.1, no_cuda= False):
+    def __init__(self, vocab_size, N=12, d_model=768, d_ff=2048, h=12, dropout=0.1, num_categories= 10, no_cuda= False):
         super(Constituent_Pretrained_transfomer, self).__init__()
         "Helper: Construct a model from hyperparameters."
         self.no_cuda=  no_cuda
@@ -193,6 +193,10 @@ class Constituent_Pretrained_transfomer(nn.Module):
         self.word_embed = nn.Sequential(Embeddings(d_model, vocab_size), self.c(self.position))
         self.constituent_Module= EncoderLayer(d_model, self.c(attn), self.c(ff), vocab_size, group_attn, dropout) 
         self.encoder = AutoModel.from_pretrained("vinai/phobert-base").encoder 
+
+        for param in self.encoder.parameters():
+            param.requires_grad = False
+
         self.outputHead = Aspect_Based_SA_Output(dropout , d_model, 4, num_categories ) # 4 class label
 
         
@@ -200,9 +204,17 @@ class Constituent_Pretrained_transfomer(nn.Module):
 
     def forward(self, inputs, mask, categories):
         x = self.word_embed(inputs)
+        
         group_prob = 0.
         x,group_prob,break_prob = self.constituent_Module(x, mask,group_prob)
-        x = self.encoder.forward(x, mask)
+        
+
+        print("Input:", x.shape)
+        print("Mask: ", mask.shape)
+
+        x = self.encoder(x , mask)
+
+
         
         output = self.outputHead.forward(x , categories )
         return output

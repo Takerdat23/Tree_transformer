@@ -8,6 +8,9 @@ from torch.utils.data import Dataset, DataLoader
 from models import *
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 
-TRAIN_PATH = './data/UIT-ViSFD/Train.csv'
-VAL_PATH = './data/UIT-ViSFD/Dev.csv'
-TEST_PATH = './data/UIT-ViSFD/Test.csv'
+
+tokenizer_en2vi = AutoTokenizer.from_pretrained("vinai/phobert-base")
+model_en2vi = AutoModel.from_pretrained("vinai/phobert-base")
+text = " Xin chào bạn"
+input = tokenizer_en2vi(text ,ma)
+ 

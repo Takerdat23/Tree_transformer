@@ -41,7 +41,7 @@ class Solver():
 
 
         if args.tree: 
-            self.model = ABSA_Tree_transfomer(  vocab_size= self.vocab_size, N = modelConfig['N_layer'], d_model= modelConfig['d_model'], 
+            self.model = Constituent_Pretrained_transfomer(  vocab_size= self.vocab_size, N = modelConfig['N_layer'], d_model= modelConfig['d_model'], 
                                           d_ff= modelConfig['d_ff'], h= modelConfig['heads'], num_categories = len(self.data_util.categories),   dropout = modelConfig['dropout'], no_cuda=args.no_cuda)
         else: 
 
