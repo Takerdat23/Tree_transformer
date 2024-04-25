@@ -192,7 +192,7 @@ class Constituent_Pretrained_transfomer(nn.Module):
         self.position = PositionalEncoding(d_model, 128)
         self.word_embed = nn.Sequential(Embeddings(d_model, vocab_size), self.c(self.position))
         self.constituent_Module= EncoderLayer(d_model, self.c(attn), self.c(ff), vocab_size, group_attn, dropout) 
-        self.encoder = AutoModel.from_pretrained("vinai/phobert-base", output_hidden_states=True).encoder 
+        self.encoder = AutoModel.from_pretrained("vinai/phobert-base").encoder 
 
         for param in self.encoder.parameters():
             param.requires_grad = False
@@ -263,13 +263,11 @@ class Constituent_Pretrained_transfomer(nn.Module):
         
 
 
-        x = self.encoder(x , extended_attention_mask.float())
-
-        print(x)
+        x = self.encoder(x , extended_attention_mask.float(), output_hidden_states = True)
 
 
         
-        output = self.outputHead.forward(x , categories )
+        output = self.outputHead.forward(x.hidden_states , categories )
         return output
 
 
