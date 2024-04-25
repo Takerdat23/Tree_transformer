@@ -12,6 +12,7 @@ def parse():
     parser.add_argument('-data_dir',default='data_dir',help='data dir')
     parser.add_argument('-load',action='store_true',help='load pretrained model')
     parser.add_argument('-tree',action='store_true',help='load pretrained model')
+    parser.add_argument('-strategy',default=None,help='Model type')
     parser.add_argument('-segment',action='store_true',help='segment or not')
     parser.add_argument('-config', default=None, type=str, help="Model config" )
     parser.add_argument('-train', action='store_true',help='whether train the model')
