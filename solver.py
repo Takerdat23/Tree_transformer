@@ -256,17 +256,25 @@ class Solver():
                     
             epoch_progress.close()
             #Valid stage 
-            aspect , sentiment = self.evaluate()
+            precision , recall , f1 = self.evaluate()
                
-            print(f"Epoch {epoch} Validation accuracy (Aspect): ", aspect)
-            print(f"Epoch {epoch} Validation accuracy (Sentiment): ", sentiment)
+            print(f"Epoch {epoch} Validation accuracy (Aspect): ", precision)
+            
 
-            combined_accuracy = (aspect + sentiment) / 2
+            
             if (self.args.wandb_api != ""):
               
-                wandb.log({"Validation Accuracy": combined_accuracy})
+                wandb.log({"Validation Accuracy": precision}) 
+        
+
+        precision, recall , f1 = solver.test()
+        
+        if (self.self.wandb_api != ""): 
+            wandb.log({"test precision": precision})
+            wandb.log({"test recall": recall })
+            wandb.log({"test f1": f1})  
            
-                    
+           
                 
                  
         self.save_model(self.model, optim, self.args.epoch, step, self.model_dir)
