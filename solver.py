@@ -269,7 +269,7 @@ class Solver():
 
         precision, recall , f1 = self.test()
         
-        if (self.self.wandb_api != ""): 
+        if (self.wandb_api != ""): 
             wandb.log({"test precision": precision})
             wandb.log({"test recall": recall })
             wandb.log({"test f1": f1})  
