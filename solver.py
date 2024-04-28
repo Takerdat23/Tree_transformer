@@ -267,7 +267,7 @@ class Solver():
                 wandb.log({"Validation Accuracy": precision}) 
         
 
-        precision, recall , f1 = solver.test()
+        precision, recall , f1 = self.test()
         
         if (self.self.wandb_api != ""): 
             wandb.log({"test precision": precision})
