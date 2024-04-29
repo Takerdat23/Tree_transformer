@@ -304,6 +304,18 @@ class Solver():
             if (self.args.wandb_api != ""):
               
                 wandb.log({"Validation Accuracy": combined_accuracy})
+        
+
+
+        aspect_precision, aspect_recall, aspect_f1, sentiment_precision, sentiment_recall, sentiment_f1 = self.test()
+        if (self.args.wandb_api != ""):
+              
+                wandb.log({"Test aspect_precision": aspect_precision})
+                wandb.log({"Test aspect_recall":aspect_recall})
+                wandb.log({"Test aspect_f1": aspect_f1})
+                wandb.log({"Test sentiment_precision": sentiment_precision})
+                wandb.log({"Test sentiment_recall": sentiment_recall})
+                wandb.log({"Test sentiment_f1":  sentiment_f1})
            
                     
                 
