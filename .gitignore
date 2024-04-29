@@ -6,3 +6,10 @@ __pycache__
 Model2
 README copy.md
 VSF_Model
+checkgpu.sh
+gpus.out
+slurm_test.sh
+test_.out 
+test_1.out 
+tf.py
+wandb
