@@ -153,6 +153,15 @@ class Solver():
         span_f1 = f1_score(span_targets, span_preds, average='weighted')
 
 
+        result = {
+            "Test Span Precision": precision,
+            "Test Span Recall": recall,
+            "Test Span F1 Score": span_f1
+        }
+
+        print(result)
+
+
         return precision, recall,  span_f1
     
     def save_model(self, model, optimizer, epoch, step, model_dir):
