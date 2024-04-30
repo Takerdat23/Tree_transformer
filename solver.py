@@ -318,6 +318,6 @@ class Solver():
                 wandb.log({"Validation Accuracy": combined_accuracy})
            
                     
-                
+                 
                  
         self.save_model(self.model, optim, self.args.epoch, step, self.model_dir)
