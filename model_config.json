@@ -1,5 +1,7 @@
 { 
     "N_layer":12, 
+    "Model_name": "vinai/phobert-base" , 
+    "M_Constituent": 1, 
     "d_model": 768, 
     "d_ff": 2048, 
     "heads": 12, 

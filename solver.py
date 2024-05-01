@@ -44,17 +44,23 @@ class Solver():
 
 
 
-        if args.tree: 
+        if args.strategy == "tree": 
             self.model = ABSA_Tree_transfomer(  vocab_size= self.vocab_size, N = modelConfig['N_layer'], d_model= modelConfig['d_model'], 
-                                          d_ff= modelConfig['d_ff'], h= modelConfig['heads'], num_categories = len(self.data_util.categories),   dropout = modelConfig['dropout'], no_cuda=args.no_cuda)
-        else: 
+                                          d_ff= modelConfig['d_ff'], h= modelConfig['heads'],  num_categories = len(self.data_util.categories),   dropout = modelConfig['dropout'], no_cuda=args.no_cuda)
+        elif args.strategy == 'base' : 
 
             self.model = ABSA_transfomer( vocab_size= self.vocab_size, N = modelConfig['N_layer'], d_model= modelConfig['d_model'], 
-                                          d_ff= modelConfig['d_ff'], h= modelConfig['heads'],num_categories = len(self.data_util.categories) ,  dropout = modelConfig['dropout'], no_cuda=args.no_cuda)
+                                          d_ff= modelConfig['d_ff'], h= modelConfig['heads'] , num_categories = len(self.data_util.categories), dropout = modelConfig['dropout'], no_cuda=args.no_cuda)
+        elif args.strategy == 'PretrainBERT' : 
+
+            self.model = Constituent_Pretrained_transformer(  vocab_size= self.vocab_size, model = self.args.model_name, M = modelConfig['M_Constituent'] , d_model= modelConfig['d_model'], 
+                                          d_ff= modelConfig['d_ff'], h= modelConfig['heads'],num_categories = len(self.data_util.categories),   dropout = modelConfig['dropout'], no_cuda=args.no_cuda)
+        elif args.strategy == 'PhoBert' : 
+
+            self.model = Pretrained_transformer(model = self.args.model_name,  d_model= modelConfig['d_model'], num_categories = len(self.data_util.categories), dropout = modelConfig['dropout'], no_cuda=args.no_cuda)
         
         
-        
-       
+         
 
         if self.args.load: 
             self.LoadPretrain()
@@ -303,6 +309,17 @@ class Solver():
             if (self.args.wandb_api != ""):
               
                 wandb.log({"Validation Accuracy": combined_accuracy})
+
+        aspect_precision, aspect_recall, aspect_f1, sentiment_precision, sentiment_recall, sentiment_f1 = self.test()
+        if (self.args.wandb_api != ""):
+              
+                wandb.log({"Test aspect_precision": aspect_precision})
+                wandb.log({"Test aspect_recall":aspect_recall})
+                wandb.log({"Test aspect_f1": aspect_f1})
+                wandb.log({"Test sentiment_precision": sentiment_precision})
+                wandb.log({"Test sentiment_recall": sentiment_recall})
+                wandb.log({"Test sentiment_f1":  sentiment_f1})
+           
            
                     
                 
