@@ -165,7 +165,7 @@ class Solver():
 
         
 
-        return topic_f1, sentiment_f1
+        return aspect_precision, aspect_recall, topic_f1, sentiment_precision, sentiment_recall, sentiment_f1
     
     def test(self):
         if self.args.no_cuda == False:
@@ -348,17 +348,18 @@ class Solver():
                     # print(f"Epoch {epoch} Validation accuracy (Sentiment): ", sentiment)
             epoch_progress.close()
             #Valid stage 
-            topic , sentiment = self.evaluate()
+            aspect_precision, aspect_recall, topic_f1, sentiment_precision, sentiment_recall, sentiment_f1 = self.evaluate()
                
-            print(f"Epoch {epoch} Validation accuracy (Aspect): ", topic)
-            print(f"Epoch {epoch} Validation accuracy (Sentiment): ", sentiment)
+            print(f"Epoch {epoch} Validation accuracy (Aspect): ", aspect_precision)
+            print(f"Epoch {epoch} Validation accuracy (Sentiment): ", sentiment_precision)
 
-            combined_accuracy = (topic + sentiment) / 2
+            combined_accuracy = (aspect_precision + sentiment_precision) / 2
             if (self.args.wandb_api != ""):
               
                 wandb.log({"Validation Accuracy": combined_accuracy})
 
-        topic_precision,  topic_recall, topic_f1, sentiment_precision, sentiment_recall, sentiment_f1 = self.test()       
+        topic_precision,  topic_recall, topic_f1, sentiment_precision, sentiment_recall, sentiment_f1 = self.test()  
+
         if (self.args.wandb_api != ""):
               
                 wandb.log({"Test sentiment_f1": sentiment_f1})
