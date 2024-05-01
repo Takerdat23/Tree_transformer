@@ -200,7 +200,7 @@ class Constituent_Modules(nn.Module):
 
 
 class Constituent_Pretrained_transformer(nn.Module): 
-    def __init__(self, vocab_size, N=12, M = 3, d_model=768, d_ff=2048, h=12, dropout=0.1, num_categories= 10, no_cuda= False):
+    def __init__(self, vocab_size, model = "vinai/phobert-base" , M = 3, d_model=768, d_ff=2048, h=12, dropout=0.1, num_categories= 10, no_cuda= False):
         super(Constituent_Pretrained_transformer, self).__init__()
         "Helper: Construct a model from hyperparameters."
         self.no_cuda=  no_cuda
@@ -211,7 +211,7 @@ class Constituent_Pretrained_transformer(nn.Module):
         self.position = PositionalEncoding(d_model, 128)
         self.word_embed = nn.Sequential(Embeddings(d_model, vocab_size), self.c(self.position))
         self.constituent_Modules= Constituent_Modules( EncoderLayer(d_model, self.c(attn), self.c(ff), vocab_size, group_attn, dropout), M )
-        self.encoder = AutoModel.from_pretrained("vinai/phobert-base").encoder 
+        self.encoder = AutoModel.from_pretrained(model).encoder 
 
         for param in self.encoder.parameters():
             param.requires_grad = False
@@ -289,7 +289,7 @@ class Constituent_Pretrained_transformer(nn.Module):
 
 
 class Constituent_Pretrained_BART(nn.Module): 
-    def __init__(self, vocab_size, N=12, M = 3, d_model=768, d_ff=2048, h=12, dropout=0.1, num_categories= 10, no_cuda= False):
+    def __init__(self, vocab_size, M = 3, model = "vinai/bartpho-word",  d_model=768, d_ff=2048, h=12, dropout=0.1, num_categories= 10, no_cuda= False):
         super(Constituent_Pretrained_BART, self).__init__()
         "Helper: Construct a model from hyperparameters."
         self.no_cuda=  no_cuda
@@ -300,7 +300,7 @@ class Constituent_Pretrained_BART(nn.Module):
         self.position = PositionalEncoding(d_model, 128)
         self.word_embed = nn.Sequential(Embeddings(d_model, vocab_size), self.c(self.position))
         self.constituent_Modules= Constituent_Modules( EncoderLayer(d_model, self.c(attn), self.c(ff), vocab_size, group_attn, dropout), M )
-        self.encoder = AutoModel.from_pretrained("vinai/bartpho-word").encoder 
+        self.encoder = AutoModel.from_pretrained(model).encoder 
 
         for param in self.encoder.parameters():
             param.requires_grad = False
