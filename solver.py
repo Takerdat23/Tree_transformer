@@ -49,12 +49,12 @@ class Solver():
                                           d_ff= modelConfig['d_ff'], h= modelConfig['heads'],num_categories = len(self.data_util.categories) ,  dropout = modelConfig['dropout'], no_cuda=args.no_cuda)
         elif args.strategy == 'PretrainBERT' : 
 
-            self.model = Constituent_Pretrained_transformer(  vocab_size= self.vocab_size, model = "vinai/phobert-base", M = modelConfig['M_Constituent'] , d_model= modelConfig['d_model'], 
+            self.model = Constituent_Pretrained_transformer(  vocab_size= self.vocab_size, model = modelConfig["Model_name"], M = modelConfig['M_Constituent'] , d_model= modelConfig['d_model'], 
                                           d_ff= modelConfig['d_ff'], h= modelConfig['heads'], num_categories = len(self.data_util.categories),   dropout = modelConfig['dropout'], no_cuda=args.no_cuda)
         
         elif args.strategy == 'PretrainBART' : 
 
-            self.model = Constituent_Pretrained_BART( vocab_size= self.vocab_size, N = modelConfig['N_layer'] , M = modelConfig['M_Constituent'] , d_model= modelConfig['d_model'], 
+            self.model = Constituent_Pretrained_BART( vocab_size= self.vocab_size, model = modelConfig["Model_name"] , M = modelConfig['M_Constituent'] , d_model= modelConfig['d_model'], 
                                           d_ff= modelConfig['d_ff'], h= modelConfig['heads'],num_categories = len(self.data_util.categories) ,  dropout = modelConfig['dropout'], no_cuda=args.no_cuda)
         
         
