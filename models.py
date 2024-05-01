@@ -399,3 +399,20 @@ class Constituent_Pretrained_transformer(nn.Module):
 
 
 
+class Pretrained_transformer(nn.Module): 
+    def __init__(self, model = "vinai/phobert-base" , d_model=768, dropout=0.1, no_cuda= False):
+        super(Pretrained_transformer, self).__init__()
+        "Helper: Construct a model from hyperparameters."
+        self.no_cuda=  no_cuda 
+        self.encoder = AutoModel.from_pretrained(model)
+
+        for param in self.encoder.parameters():
+            param.requires_grad = False
+
+        self.outputHead =Topic_SA_Output( d_model, 4, 3 )
+    
+
+    def forward(self, inputs, mask):
+        x = self.encoder(inputs , mask, output_hidden_states = True)
+        output = self.outputHead.forward(x.hidden_states)
+        return output
