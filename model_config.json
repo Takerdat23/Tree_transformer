@@ -1,6 +1,7 @@
 { 
     "N_layer":12, 
     "d_model": 768, 
+    "M_Constituent": 1, 
     "d_ff": 2048, 
     "heads": 12, 
     "dropout" :0.1
