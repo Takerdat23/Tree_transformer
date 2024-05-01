@@ -490,3 +490,22 @@ class ABSA_transfomer(nn.Module):
         return output
     
 
+
+class Pretrained_transformer(nn.Module): 
+    def __init__(self, model = "vinai/phobert-base" , d_model=768, dropout=0.1, num_categories= 10, no_cuda= False):
+        super(Pretrained_transformer, self).__init__()
+        "Helper: Construct a model from hyperparameters."
+        self.no_cuda=  no_cuda 
+        self.encoder = AutoModel.from_pretrained(model)
+
+        for param in self.encoder.parameters():
+            param.requires_grad = False
+
+        self.outputHead = Aspect_Based_SA_Output(dropout , d_model, 4, num_categories ) # 4 class label
+    
+
+    def forward(self, inputs, mask, categories):
+        x = self.encoder(inputs , mask, output_hidden_states = True)
+        output = self.outputHead.forward(x.hidden_states , categories )
+        return output
+

@@ -51,6 +51,9 @@ class Solver():
 
             self.model = Constituent_Pretrained_transformer(  vocab_size= self.vocab_size, model = self.args.model_name, M = modelConfig['M_Constituent'] , d_model= modelConfig['d_model'], 
                                           d_ff= modelConfig['d_ff'], h= modelConfig['heads'],   dropout = modelConfig['dropout'], no_cuda=args.no_cuda)
+        elif args.strategy == 'PhoBert' : 
+
+            self.model = Pretrained_transformer(model = self.args.model_name,  d_model= modelConfig['d_model'], dropout = modelConfig['dropout'], no_cuda=args.no_cuda)
         
         
          
