@@ -305,7 +305,7 @@ class Solver():
             print(f"Epoch {epoch} Validation accuracy (Aspect): ", aspect_precision)
             print(f"Epoch {epoch} Validation accuracy (Sentiment): ", sentiment_precision)
 
-            combined_accuracy = (aspect_precision + sentiment_precisio) / 2
+            combined_accuracy = (aspect_precision + sentiment_precision) / 2
             if (self.args.wandb_api != ""):
               
                 wandb.log({"Validation Accuracy": combined_accuracy})
