@@ -314,7 +314,7 @@ class Constituent_Modules(nn.Module):
 
 
 class Constituent_Pretrained_transformer(nn.Module): 
-    def __init__(self, vocab_size, model = "vinai/phobert-base", M = 3, d_model=768, d_ff=2048, h=12, dropout=0.1, no_cuda= False):
+    def __init__(self, vocab_size, model = "vinai/phobert-base" , M = 3, d_model=768, d_ff=2048, h=12, dropout=0.1, num_categories= 10, no_cuda= False):
         super(Constituent_Pretrained_transformer, self).__init__()
         "Helper: Construct a model from hyperparameters."
         self.no_cuda=  no_cuda
