@@ -258,57 +258,83 @@ class Solver():
         self.model.train()
         total_loss = []
         start = time.time()
-        
-        for epoch in tqdm(range(self.args.epoch)):
-            epoch_progress = tqdm(total=len(self.data_util.train_loader), desc=f'Epoch {epoch+1}/{self.args.epoch}', position=0)
 
-            for step, batch in enumerate(self.data_util.train_loader):
-                inputs = batch['input_ids'].to(device)
-                mask = batch['attention_mask'].to(device)
-                labels = batch['labels'].to(device)
+        best_combined_accuracy = 0
+        best_epoch = 0
+        best_model_state = None
+        try:
+            for epoch in tqdm(range(self.args.epoch)):
+                epoch_progress = tqdm(total=len(self.data_util.train_loader), desc=f'Epoch {epoch+1}/{self.args.epoch}', position=0)
 
-                optim.zero_grad()
-                output = self.model.forward(inputs, mask, self.data_util.categories)  # Assuming categories are not used for now
-            
-                # Calculate loss
-              
-                output = torch.sigmoid(output)
-                output = output.float()
-                labels = labels.float()
+                for step, batch in enumerate(self.data_util.train_loader):
+                    inputs = batch['input_ids'].to(device)
+                    mask = batch['attention_mask'].to(device)
+                    labels = batch['labels'].to(device)
 
-               
-                loss = F.binary_cross_entropy(output, labels)
+                    optim.zero_grad()
+                    output = self.model.forward(inputs, mask, self.data_util.categories)  # Assuming categories are not used for now
                 
-                # loss = self.model.masked_lm_loss(output, labels)
-                total_loss.append(loss.item())
+                    # Calculate loss
+                
+                    output = torch.sigmoid(output)
+                    output = output.float()
+                    labels = labels.float()
 
-                # Backpropagation
-                loss.backward()
-                optim.step()
+                
+                    loss = F.binary_cross_entropy(output, labels)
+                    
+                    # loss = self.model.masked_lm_loss(output, labels)
+                    total_loss.append(loss.item())
+
+                    # Backpropagation
+                    loss.backward()
+                    optim.step()
+                    if (self.args.wandb_api != ""):
+                        wandb.log({"Loss": loss.item()}, step=epoch*len(self.data_util.train_loader) + step)
+                    epoch_progress.update(1)
+                    epoch_progress.set_postfix({'Loss': loss.item()})
+
+                    if (step + 1) % 100 == 0:
+                        elapsed = time.time() - start
+                        print(f'Epoch [{epoch + 1}/{self.args.epoch}], Step [{step + 1}/{len(self.data_util.train_loader)}], '
+                            f'Loss: {loss.item():.4f}, Total Time: {elapsed:.2f} sec')
+                        # aspect , sentiment = self.evaluate()
+                
+                        # print(f"Epoch {epoch} Validation accuracy (Aspect): ", aspect)
+                        # print(f"Epoch {epoch} Validation accuracy (Sentiment): ", sentiment)
+                epoch_progress.close()
+                #Valid stage 
+                aspect , sentiment = self.evaluate()
+                
+                print(f"Epoch {epoch} Validation accuracy (Aspect): ", aspect)
+                print(f"Epoch {epoch} Validation accuracy (Sentiment): ", sentiment)
+
+                combined_accuracy = (aspect + sentiment) / 2
                 if (self.args.wandb_api != ""):
-                    wandb.log({"Loss": loss.item()}, step=epoch*len(self.data_util.train_loader) + step)
-                epoch_progress.update(1)
-                epoch_progress.set_postfix({'Loss': loss.item()})
+                
+                    wandb.log({"Validation Accuracy": combined_accuracy})
+                if combined_accuracy > best_combined_accuracy:
+                        best_combined_accuracy = combined_accuracy
+                        best_epoch = epoch
+                        best_model_state = self.model.state_dict()
+            
+        except KeyboardInterrupt:
+            if best_model_state != None: 
+                print("Training interrupted. Saving the best model...")
+                self.model.load_state_dict(best_model_state)
+                self.save_model(self.model, optim, best_epoch, step, self.model_dir)
+                print("Best model saved.")
+            else: 
+                print("Training interrupted. Saving model...")
+                self.save_model(self.model, optim, best_epoch, step, self.model_dir)
+                print("Model saved.")
 
-                if (step + 1) % 100 == 0:
-                    elapsed = time.time() - start
-                    print(f'Epoch [{epoch + 1}/{self.args.epoch}], Step [{step + 1}/{len(self.data_util.train_loader)}], '
-                        f'Loss: {loss.item():.4f}, Total Time: {elapsed:.2f} sec')
-                    # aspect , sentiment = self.evaluate()
-               
-                    # print(f"Epoch {epoch} Validation accuracy (Aspect): ", aspect)
-                    # print(f"Epoch {epoch} Validation accuracy (Sentiment): ", sentiment)
-            epoch_progress.close()
-            #Valid stage 
-            aspect , sentiment = self.evaluate()
-               
-            print(f"Epoch {epoch} Validation accuracy (Aspect): ", aspect)
-            print(f"Epoch {epoch} Validation accuracy (Sentiment): ", sentiment)
+            raise 
 
-            combined_accuracy = (aspect + sentiment) / 2
-            if (self.args.wandb_api != ""):
-              
-                wandb.log({"Validation Accuracy": combined_accuracy})
+        self.model.load_state_dict(best_model_state)
+
+        #Save the best model
+        self.save_model(self.model, optim, self.args.epoch, step, self.model_dir)
 
         aspect_precision, aspect_recall, aspect_f1, sentiment_precision, sentiment_recall, sentiment_f1 = self.test()
         if (self.args.wandb_api != ""):
