@@ -210,65 +210,91 @@ class Solver():
         self.model.train()
         total_loss = []
         start = time.time()
+
+        best_accuracy = 0
+        best_epoch = 0
+        best_model_state = None
+
+        try:
         
-        for epoch in tqdm(range(self.args.epoch)):
-            epoch_progress = tqdm(total=len(self.data_util.train_loader), desc=f'Epoch {epoch+1}/{self.args.epoch}', position=0)
+            for epoch in tqdm(range(self.args.epoch)):
+                epoch_progress = tqdm(total=len(self.data_util.train_loader), desc=f'Epoch {epoch+1}/{self.args.epoch}', position=0)
 
-            for step, batch in enumerate(self.data_util.train_loader):
-                input_ids = batch['input_ids'].squeeze(1).to(device)
-                attention_mask = batch['attention_mask'].to(device)
-                spans = batch['spans'].float().to(device)
+                for step, batch in enumerate(self.data_util.train_loader):
+                    input_ids = batch['input_ids'].squeeze(1).to(device)
+                    attention_mask = batch['attention_mask'].to(device)
+                    spans = batch['spans'].float().to(device)
 
-                optim.zero_grad()
-                span_logits = self.model(input_ids, attention_mask)
-                loss_span = criterion_span(span_logits.squeeze(), spans)
+                    optim.zero_grad()
+                    span_logits = self.model(input_ids, attention_mask)
+                    loss_span = criterion_span(span_logits.squeeze(), spans)
 
-                loss = loss_span
-            
-
-         
-           
-                total_loss.append(loss.item())
-
-
-                # Backpropagation
-                loss.backward()
-                optim.step()
-                if (self.args.wandb_api != ""):
-                    wandb.log({"Loss": loss.item()})
-                epoch_progress.update(1)
-                epoch_progress.set_postfix({'Loss': loss.item()})
-
-                if (step + 1) % 100 == 0:
-                    elapsed = time.time() - start
-                    print(f'Epoch [{epoch + 1}/{self.args.epoch}], Step [{step + 1}/{len(self.data_util.train_loader)}], '
-                        f'Loss: {loss.item():.4f}, Total Time: {elapsed:.2f} sec')
-                    # Score = self.evaluate()
-               
-                    # print(f"Epoch {epoch} Validation accuracy: ", Score)
-                    # print(f"Epoch {epoch} Validation accuracy (Sentiment): ", sentiment)
-            epoch_progress.close()
-
-
-
-            #Valid stage 
-            precision, recall,  span_f1 = self.evaluate()
-               
-            print(f"Epoch {epoch} Validation accuracy: ",  precision)
-
-            
-            if (self.args.wandb_api != ""):
+                    loss = loss_span
                 
-              
-                wandb.log({"Validation Accuracy": precision})
-                wandb.log({"Validation Recall": recall})
-                wandb.log({"Validation F1_score": span_f1})
 
             
             
+                    total_loss.append(loss.item())
 
-           
+
+                    # Backpropagation
+                    loss.backward()
+                    optim.step()
+                    if (self.args.wandb_api != ""):
+                        wandb.log({"Loss": loss.item()})
+                    epoch_progress.update(1)
+                    epoch_progress.set_postfix({'Loss': loss.item()})
+
+                    if (step + 1) % 100 == 0:
+                        elapsed = time.time() - start
+                        print(f'Epoch [{epoch + 1}/{self.args.epoch}], Step [{step + 1}/{len(self.data_util.train_loader)}], '
+                            f'Loss: {loss.item():.4f}, Total Time: {elapsed:.2f} sec')
+                        # Score = self.evaluate()
+                
+                        # print(f"Epoch {epoch} Validation accuracy: ", Score)
+                        # print(f"Epoch {epoch} Validation accuracy (Sentiment): ", sentiment)
+                epoch_progress.close()
+
+
+
+                #Valid stage 
+                precision, recall,  span_f1 = self.evaluate()
+                
+                print(f"Epoch {epoch} Validation accuracy: ",  precision)
+
+                
+                if (self.args.wandb_api != ""):
                     
+                
+                    wandb.log({"Validation Accuracy": precision})
+                    wandb.log({"Validation Recall": recall})
+                    wandb.log({"Validation F1_score": span_f1})
+                
+                if precision > best_accuracy:
+                            best_accuracy = precision
+                            best_epoch = epoch
+                            best_model_state = self.model.state_dict()
+            
+
+
+        except KeyboardInterrupt:
+            if best_model_state != None: 
+                print("Training interrupted. Saving the best model...")
+                self.model.load_state_dict(best_model_state)
+                self.save_model(self.model, optim, best_epoch, step, self.model_dir)
+                print("Best model saved.")
+            else: 
+                print("Training interrupted. Saving model...")
+                self.save_model(self.model, optim, best_epoch, step, self.model_dir)
+                print("Model saved.")
+
+            raise 
+
+        self.model.load_state_dict(best_model_state)
+
+        #Save the best model
+        self.save_model(self.model, optim, self.args.epoch, step, self.model_dir)
+           
                 
         #testing
             
@@ -280,4 +306,4 @@ class Solver():
             wandb.log({"Test Recall": recall})
             wandb.log({"Test F1-score": span_f1})    
               
-        self.save_model(self.model, optim, self.args.epoch, step, self.model_dir)
+  
