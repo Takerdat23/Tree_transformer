@@ -264,6 +264,7 @@ class Solver():
 
         best_combined_accuracy = 0
         best_epoch = 0
+        best_model_state = None
 
         try:
             
