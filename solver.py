@@ -215,56 +215,86 @@ class Solver():
         self.model.train()
         total_loss = []
         start = time.time()
+
+
+        best_accuracy = 0
+        best_epoch = 0
+        best_model_state = None
+
+        try:
         
-        for epoch in tqdm(range(self.args.epoch)):
-            epoch_progress = tqdm(total=len(self.data_util.train_loader), desc=f'Epoch {epoch+1}/{self.args.epoch}', position=0)
+            for epoch in tqdm(range(self.args.epoch)):
+                epoch_progress = tqdm(total=len(self.data_util.train_loader), desc=f'Epoch {epoch+1}/{self.args.epoch}', position=0)
 
-            for step, batch in enumerate(self.data_util.train_loader):
-                inputs = batch['input_ids'].to(device)
-                mask = batch['attention_mask'].to(device)
-                labels = batch['labels'].to(device)
+                for step, batch in enumerate(self.data_util.train_loader):
+                    inputs = batch['input_ids'].to(device)
+                    mask = batch['attention_mask'].to(device)
+                    labels = batch['labels'].to(device)
 
-                optim.zero_grad()
-                output = self.model.forward(inputs, mask)  # Assuming categories are not used for now
-            
-                # Calculate loss
-              
-                output = torch.sigmoid(output)
-                output = output.float()
-                labels = labels.float()
-
-
-                loss = F.binary_cross_entropy(output, labels)
+                    optim.zero_grad()
+                    output = self.model.forward(inputs, mask)  # Assuming categories are not used for now
                 
-                # loss = self.model.masked_lm_loss(output, labels)
-                total_loss.append(loss.item())
+                    # Calculate loss
+                
+                    output = torch.sigmoid(output)
+                    output = output.float()
+                    labels = labels.float()
 
-                # Backpropagation
-                loss.backward()
-                optim.step()
-                if (self.args.wandb_api != ""):
-                    wandb.log({"Loss": loss.item()})
-                epoch_progress.update(1)
-                epoch_progress.set_postfix({'Loss': loss.item()})
 
-                if (step + 1) % 100 == 0:
-                    elapsed = time.time() - start
-                    print(f'Epoch [{epoch + 1}/{self.args.epoch}], Step [{step + 1}/{len(self.data_util.train_loader)}], '
-                        f'Loss: {loss.item():.4f}, Total Time: {elapsed:.2f} sec')
-                    # precision, recall,  f1 = self.evaluate()
-               
+                    loss = F.binary_cross_entropy(output, labels)
                     
-            epoch_progress.close()
-            #Valid stage 
-            precision , recall , f1 = self.evaluate()
-               
-            print(f"Epoch {epoch} Validation accuracy (Aspect): ", precision)
-            
+                    # loss = self.model.masked_lm_loss(output, labels)
+                    total_loss.append(loss.item())
 
+                    # Backpropagation
+                    loss.backward()
+                    optim.step()
+                    if (self.args.wandb_api != ""):
+                        wandb.log({"Loss": loss.item()})
+                    epoch_progress.update(1)
+                    epoch_progress.set_postfix({'Loss': loss.item()})
+
+                    if (step + 1) % 100 == 0:
+                        elapsed = time.time() - start
+                        print(f'Epoch [{epoch + 1}/{self.args.epoch}], Step [{step + 1}/{len(self.data_util.train_loader)}], '
+                            f'Loss: {loss.item():.4f}, Total Time: {elapsed:.2f} sec')
+                        # precision, recall,  f1 = self.evaluate()
+                
+                        
+                epoch_progress.close()
+                #Valid stage 
+                precision , recall , f1 = self.evaluate()
+                
+                print(f"Epoch {epoch} Validation accuracy (Aspect): ", precision)
+                
+
+                
+                if (self.args.wandb_api != ""):
+                
+                    wandb.log({"Validation Accuracy": precision}) 
             
-            if (self.args.wandb_api != ""):
-              
-                wandb.log({"Validation Accuracy": precision}) 
+                if precision > best_accuracy:
+                        best_accuracy = precision
+                        best_epoch = epoch
+                        best_model_state = self.model.state_dict()
+        
+        except KeyboardInterrupt:
+            if best_model_state != None: 
+                print("Training interrupted. Saving the best model...")
+                self.model.load_state_dict(best_model_state)
+                self.save_model(self.model, optim, best_epoch, step, self.model_dir)
+                print("Best model saved.")
+            else: 
+                print("Training interrupted. Saving model...")
+                self.save_model(self.model, optim, best_epoch, step, self.model_dir)
+                print("Model saved.")
+
+            raise 
+
+        self.model.load_state_dict(best_model_state)
+
+        #Save the best model
+        self.save_model(self.model, optim, self.args.epoch, step, self.model_dir)
         
 
         precision, recall , f1 = self.test()
