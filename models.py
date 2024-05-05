@@ -10,6 +10,44 @@ from transformers import BertModel, BertConfig, AutoTokenizer, AutoModelForSeq2S
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 
 
+
+
+class NLI_Output(nn.Module): 
+    def __init__(self, dropout , d_input, Num_labels):
+        """
+        Initialization 
+        dropout: dropout percent
+        d_input: Model dimension 
+        d_output: output dimension 
+        categories: categories list
+        """
+        super(NLI_Output, self).__init__()
+        self.dense = nn.Linear(d_input ,Num_labels ,  bias=True)
+        # self.softmax = nn.Softmax(dim=-1) 
+        self.norm = nn.LayerNorm(d_input, eps=1e-12)
+        self.dropout = nn.Dropout(dropout)
+        self.num_labels= Num_labels
+
+    def forward(self, encoder_output ):
+        """ 
+         x : Model output 
+         categories: aspect, categories  
+         Output: sentiment output 
+        """
+
+        print(encoder_output.shape)
+        x = encoder_output[: , 0 , :]
+      
+        x= self.norm(x)
+        x = self.dropout(x)
+        output = self.dense(x)
+     
+        return output
+
+
+
+
+
 class Topic_SA_Output(nn.Module): 
     def __init__(self, d_input, topic_output, sentiment_output):
         """
@@ -224,7 +262,7 @@ class Encoder(nn.Module):
 
     
 class ABSA_Tree_transfomer(nn.Module): 
-    def __init__(self, vocab_size, N=12, No_consti = 0, d_model=768, d_ff=2048, h=12, dropout=0.1, num_categories= 10, no_cuda= False):
+    def __init__(self, vocab_size, N=12, No_consti = 0, d_model=768, d_ff=2048, h=12, dropout=0.1, no_cuda= False):
         super(ABSA_Tree_transfomer, self).__init__()
         "Helper: Construct a model from hyperparameters."
         self.no_cuda=  no_cuda
@@ -250,25 +288,25 @@ class ABSA_Tree_transfomer(nn.Module):
             self.encoder = Encoder(EncoderLayer(d_model, self.c(self.attn), self.c(self.ff), vocab_size, self.group_attn, dropout), 
                         N, d_model, vocab_size, self.c(self.word_embed),  dropout)
 
-        self.outputHead = Aspect_Based_SA_Output(dropout , d_model, 4, num_categories ) # 4 class label
+        self.outputHead = NLI_Output(dropout , d_model, 4) # 4 class label
 
         
         
 
-    def forward(self, inputs, mask, categories):
+    def forward(self, inputs, mask):
         if self.Constituent != 0: 
       
             x, Consti_hidden_states, _ = self.Consti_encoder.forward(inputs, mask)
          
-            _, hiddenStates = self.encoder.forward(x, mask)
+            x, hiddenStates = self.encoder.forward(x, mask)
 
-            final_hiddenstates  =Consti_hidden_states + hiddenStates
+            # final_hiddenstates  = Consti_hidden_states + hiddenStates
 
-            output = self.outputHead.forward(final_hiddenstates , categories )
+            output = self.outputHead.forward(x)
         else:
-            _, hiddenStates ,_= self.encoder.forward(inputs, mask)
+            x, hiddenStates ,_= self.encoder.forward(inputs, mask)
             
-            output = self.outputHead.forward(hiddenStates, categories )
+            output = self.outputHead.forward(x)
         return output
 
 
