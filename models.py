@@ -285,7 +285,7 @@ class ABSA_Tree_transfomer(nn.Module):
             Layers = N - No_consti
 
             self.encoder = BaseEncoder(BaseEncoderLayer(d_model, self.c(self.attn), self.c(self.ff), vocab_size, dropout), 
-                        Layers, d_model, vocab_size)
+                        Layers, d_model, vocab_size, dropout)
         else: 
             self.encoder = Encoder(EncoderLayer(d_model, self.c(self.attn), self.c(self.ff), vocab_size, self.group_attn, dropout), 
                         N, d_model, vocab_size, self.c(self.word_embed),  dropout)
