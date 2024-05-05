@@ -183,11 +183,12 @@ class BaseEncoderLayer(nn.Module):
 
 
 class BaseEncoder(nn.Module):
-    def __init__(self, layer, N, d_model, vocab_size):
+    def __init__(self, layer, N, d_model, vocab_size, dropout):
         super(BaseEncoder, self).__init__()
   
         self.layers = clones(layer, N)
         self.intermidiate = IntermidiateOutput( d_model, vocab_size)
+        self.output = EncoderOutputLayer(dropout, vocab_size, d_model)
 
     def forward(self, inputs, mask):
     
@@ -199,11 +200,12 @@ class BaseEncoder(nn.Module):
             hidden_states.append(x)
         
         x= self.intermidiate(x)
+        x= self.output(x)
+
+      
         
 
         return x, hidden_states
-
-
 class EncoderLayer(nn.Module):
     "Encoder is made up of self-attn and feed forward (defined below)"
     def __init__(self, size, self_attn, feed_forward, vocab_size ,  group_attn, dropout):
@@ -262,7 +264,7 @@ class Encoder(nn.Module):
 
     
 class ABSA_Tree_transfomer(nn.Module): 
-    def __init__(self, vocab_size, N=12, No_consti = 0, d_model=768, d_ff=2048, h=12, dropout=0.1, no_cuda= False):
+    def __init__(self, vocab_size, N=12, No_consti = 1, d_model=768, d_ff=2048, h=12, dropout=0.1, no_cuda= False):
         super(ABSA_Tree_transfomer, self).__init__()
         "Helper: Construct a model from hyperparameters."
         self.no_cuda=  no_cuda
