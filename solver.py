@@ -40,18 +40,14 @@ class Solver():
 
 
 
-        if args.tree: 
-            self.model = Tree_transfomer(  vocab_size= self.vocab_size, N = modelConfig['N_layer'], 
-                                          d_model= modelConfig['d_model'], 
-                                          d_ff= modelConfig['d_ff'], h= modelConfig['heads'],   
-                                          dropout = modelConfig['dropout'], no_cuda=args.no_cuda)
-        else: 
+        if args.strategy == "tree": 
+            self.model = ABSA_Tree_transfomer(  vocab_size= self.vocab_size, N = modelConfig['N_layer'], No_consti =  modelConfig['Consti'], d_model= modelConfig['d_model'], 
+                                          d_ff= modelConfig['d_ff'], h= modelConfig['heads'],   dropout = modelConfig['dropout'], no_cuda=args.no_cuda)
+        elif args.strategy == 'base' : 
 
-            self.model = Transfomer( vocab_size= self.vocab_size, N = modelConfig['N_layer'], 
-                                          d_model= modelConfig['d_model'], 
-                                          d_ff= modelConfig['d_ff'], h= modelConfig['heads'] ,  
-                                          dropout = modelConfig['dropout'], no_cuda=args.no_cuda)
-        
+            self.model = ABSA_transfomer( vocab_size= self.vocab_size, N = modelConfig['N_layer'], d_model= modelConfig['d_model'], 
+                                          d_ff= modelConfig['d_ff'], h= modelConfig['heads'] ,  dropout = modelConfig['dropout'], no_cuda=args.no_cuda)
+     
         
        
 
