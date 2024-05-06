@@ -80,6 +80,56 @@ class IntermidiateOutput(nn.Module):
    
         return x
 
+class BaseEncoderLayer_ForConsti(nn.Module):
+    "Encoder is made up of self-attn and feed forward (defined below)"
+    def __init__(self, size, self_attn, feed_forward, vocab_size ,  dropout):
+        super(BaseEncoderLayer_ForConsti, self).__init__()
+        self.self_attn = self_attn
+        self.feed_forward = feed_forward
+        self.sublayer = clones(SublayerConnection(size, dropout), 2)
+        
+        self.size = size
+        # self.selfoutput = SelfOutputLayer(dropout, size, size )
+        
+
+    def forward(self, x, mask):
+  
+    
+        x = self.sublayer[0](x, lambda x: self.self_attn(x, x, x,  mask= mask))
+ 
+        x = self.sublayer[1](x, self.feed_forward)
+
+    
+        return x
+
+
+
+class BaseEncoder_ForConsti(nn.Module):
+    def __init__(self, layer, N, d_model, vocab_size, dropout):
+        super(BaseEncoder_ForConsti, self).__init__()
+  
+        self.layers = clones(layer, N)
+        self.intermidiate = IntermidiateOutput( d_model, vocab_size)
+        self.output = EncoderOutputLayer(dropout, vocab_size, d_model)
+
+    def forward(self, inputs, mask):
+    
+        hidden_states =[]
+        x = inputs
+
+        for layer in self.layers:
+            x = layer(x, mask)
+            hidden_states.append(x)
+        
+        x= self.intermidiate(x)
+        x= self.output(x)
+
+      
+        
+
+        return x, hidden_states
+
+
 class Encoder(nn.Module):
     def __init__(self, layer, N, d_model, vocab_size, word_embed, dropout):
         super(Encoder, self).__init__()
@@ -167,6 +217,59 @@ class Tree_transfomer(nn.Module):
         
         output = self.outputHead.forward(x )
         return output
+
+
+class ABSA_Tree_transfomer(nn.Module): 
+    def __init__(self, vocab_size, N=12, No_consti = 1, d_model=768, d_ff=2048, h=12, dropout=0.1, no_cuda= False):
+        super(ABSA_Tree_transfomer, self).__init__()
+        "Helper: Construct a model from hyperparameters."
+        self.no_cuda=  no_cuda
+        self.Constituent = No_consti
+        self.c = copy.deepcopy
+        self.attn = MultiHeadedAttention(h, d_model, no_cuda=self.no_cuda)
+        self.group_attn = GroupAttention(d_model, no_cuda=self.no_cuda)
+        self.ff = PositionwiseFeedForward(d_model, d_ff, dropout)
+        self.position = PositionalEncoding(d_model, 128)
+        self.word_embed = nn.Sequential(Embeddings(d_model, vocab_size), self.c(self.position))
+
+        if self.Constituent != 0: 
+
+
+            self.Consti_encoder = Encoder(EncoderLayer(d_model, self.c(self.attn), self.c(self.ff), vocab_size, self.group_attn, dropout), 
+                        No_consti, d_model, vocab_size, self.c(self.word_embed),  dropout)
+            
+            Layers = N - No_consti
+
+            self.encoder = BaseEncoder_ForConsti(BaseEncoderLayer_ForConsti(d_model, self.c(self.attn), self.c(self.ff), vocab_size, dropout), 
+                        Layers, d_model, vocab_size, dropout)
+        else: 
+            self.encoder = Encoder(EncoderLayer(d_model, self.c(self.attn), self.c(self.ff), vocab_size, self.group_attn, dropout), 
+                        N, d_model, vocab_size, self.c(self.word_embed),  dropout)
+
+        self.outputHead = VSMEC_Output(dropout , d_model, 7)  # 4 class label
+
+        
+        
+
+    def forward(self, inputs, mask):
+        if self.Constituent != 0: 
+      
+            x, Consti_hidden_states, _ = self.Consti_encoder.forward(inputs, mask)
+
+
+
+            x, hiddenStates = self.encoder.forward(x, mask)
+
+            final_hiddenstates  = Consti_hidden_states + hiddenStates
+
+            output = self.outputHead.forward(x )
+        else:
+            x, hiddenStates ,_= self.encoder.forward(inputs, mask)
+            
+            output = self.outputHead.forward(x )
+        return output
+
+
 
 #Base transformer
 
