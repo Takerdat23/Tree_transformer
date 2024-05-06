@@ -48,9 +48,9 @@ class EncoderOutputLayer(nn.Module):
             (dropout): Dropout(p=0.1, inplace=False)
           )
     """
-    def __init__(self, dropout , d_input, d_output, vocab_size):
+    def __init__(self, dropout , d_input, d_output):
         super(EncoderOutputLayer, self).__init__()
-        self.dense = nn.Linear(vocab_size, d_output, bias=True)
+        self.dense = nn.Linear(d_input, d_output, bias=True)
         self.norm = nn.LayerNorm(d_output, eps=1e-05)
         self.dropout = nn.Dropout(dropout)
 
@@ -59,7 +59,6 @@ class EncoderOutputLayer(nn.Module):
         x = self.norm(x)
         x = self.dropout(x)
         return x
-
 
 class IntermidiateOutput(nn.Module): 
     """
@@ -136,7 +135,7 @@ class Encoder(nn.Module):
         self.word_embed = word_embed
         self.layers = clones(layer, N)
         self.intermidiate = IntermidiateOutput( d_model, vocab_size)
-        self.output = EncoderOutputLayer(dropout, d_model, d_model, vocab_size)
+        self.output = EncoderOutputLayer(dropout, vocab_size, d_model)
         
         
 
@@ -192,36 +191,60 @@ class EncoderLayer(nn.Module):
     
         return x, group_prob, break_prob
 
+class BaseEncoderLayer_ForConsti(nn.Module):
+    "Encoder is made up of self-attn and feed forward (defined below)"
+    def __init__(self, size, self_attn, feed_forward, vocab_size ,  dropout):
+        super(BaseEncoderLayer_ForConsti, self).__init__()
+        self.self_attn = self_attn
+        self.feed_forward = feed_forward
+        self.sublayer = clones(SublayerConnection(size, dropout), 2)
+        
+        self.size = size
+        # self.selfoutput = SelfOutputLayer(dropout, size, size )
+        
+
+    def forward(self, x, mask):
+  
+    
+        x = self.sublayer[0](x, lambda x: self.self_attn(x, x, x,  mask= mask))
+ 
+        x = self.sublayer[1](x, self.feed_forward)
 
     
-class Tree_transfomer(nn.Module): 
-    def __init__(self, vocab_size, N=6, d_model=512, d_ff=2048, h=8, dropout=0.1, no_cuda= False):
-        super(Tree_transfomer, self).__init__()
-        "Helper: Construct a model from hyperparameters."
-        self.no_cuda=  no_cuda
-        self.c = copy.deepcopy
-        attn = MultiHeadedAttention(h, d_model, no_cuda=self.no_cuda)
-        group_attn = GroupAttention(d_model, no_cuda=self.no_cuda)
-        ff = PositionwiseFeedForward(d_model, d_ff, dropout)
-        position = PositionalEncoding(d_model, 128)
-        word_embed = nn.Sequential(Embeddings(d_model, vocab_size), self.c(position))
-        self.encoder = Encoder(EncoderLayer(d_model, self.c(attn), self.c(ff), vocab_size, group_attn, dropout), 
-                    N, d_model, vocab_size, self.c(word_embed),  dropout)
-        self.outputHead = VSMEC_Output(dropout , d_model, 7) # 4 class label
+        return x
 
-        
-        
+
+
+class BaseEncoder_ForConsti(nn.Module):
+    def __init__(self, layer, N, d_model, vocab_size, dropout):
+        super(BaseEncoder_ForConsti, self).__init__()
+  
+        self.layers = clones(layer, N)
+        self.intermidiate = IntermidiateOutput( d_model, vocab_size)
+        self.output = EncoderOutputLayer(dropout, vocab_size, d_model)
 
     def forward(self, inputs, mask):
-        x ,  _ ,_= self.encoder.forward(inputs, mask)
+    
+        hidden_states =[]
+        x = inputs
+
+        for layer in self.layers:
+            x = layer(x, mask)
+            hidden_states.append(x)
         
-        output = self.outputHead.forward(x )
-        return output
+        x= self.intermidiate(x)
+        x= self.output(x)
 
+      
+        
 
-class ABSA_Tree_transfomer(nn.Module): 
+        return x, hidden_states
+
+    
+
+class Tree_transfomer(nn.Module): 
     def __init__(self, vocab_size, N=12, No_consti = 1, d_model=768, d_ff=2048, h=12, dropout=0.1, no_cuda= False):
-        super(ABSA_Tree_transfomer, self).__init__()
+        super(Tree_transfomer, self).__init__()
         "Helper: Construct a model from hyperparameters."
         self.no_cuda=  no_cuda
         self.Constituent = No_consti
@@ -246,7 +269,7 @@ class ABSA_Tree_transfomer(nn.Module):
             self.encoder = Encoder(EncoderLayer(d_model, self.c(self.attn), self.c(self.ff), vocab_size, self.group_attn, dropout), 
                         N, d_model, vocab_size, self.c(self.word_embed),  dropout)
 
-        self.outputHead = VSMEC_Output(dropout , d_model, 7)  # 4 class label
+        self.outputHead = VSMEC_Output(dropout , d_model, 7)
 
         
         
@@ -268,7 +291,6 @@ class ABSA_Tree_transfomer(nn.Module):
             
             output = self.outputHead.forward(x )
         return output
-
 
 
 #Base transformer
