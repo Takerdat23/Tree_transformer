@@ -158,10 +158,10 @@ class IntermidiateOutput(nn.Module):
    
         return x
 
-class BaseEncoderLayer(nn.Module):
+class BaseEncoderLayer_ForConsti(nn.Module):
     "Encoder is made up of self-attn and feed forward (defined below)"
     def __init__(self, size, self_attn, feed_forward, vocab_size ,  dropout):
-        super(BaseEncoderLayer, self).__init__()
+        super(BaseEncoderLayer_ForConsti, self).__init__()
         self.self_attn = self_attn
         self.feed_forward = feed_forward
         self.sublayer = clones(SublayerConnection(size, dropout), 2)
@@ -182,9 +182,9 @@ class BaseEncoderLayer(nn.Module):
 
 
 
-class BaseEncoder(nn.Module):
+class BaseEncoder_ForConsti(nn.Module):
     def __init__(self, layer, N, d_model, vocab_size, dropout):
-        super(BaseEncoder, self).__init__()
+        super(BaseEncoder_ForConsti, self).__init__()
   
         self.layers = clones(layer, N)
         self.intermidiate = IntermidiateOutput( d_model, vocab_size)
@@ -284,7 +284,7 @@ class ABSA_Tree_transfomer(nn.Module):
             
             Layers = N - No_consti
 
-            self.encoder = BaseEncoder(BaseEncoderLayer(d_model, self.c(self.attn), self.c(self.ff), vocab_size, dropout), 
+            self.encoder = BaseEncoder_ForConsti(BaseEncoderLayer_ForConsti(d_model, self.c(self.attn), self.c(self.ff), vocab_size, dropout), 
                         Layers, d_model, vocab_size, dropout)
         else: 
             self.encoder = Encoder(EncoderLayer(d_model, self.c(self.attn), self.c(self.ff), vocab_size, self.group_attn, dropout), 
