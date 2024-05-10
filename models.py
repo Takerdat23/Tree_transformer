@@ -395,11 +395,17 @@ class ABSA_Tree_transfomer(nn.Module):
         
         
 
-    def forward(self, inputs, mask, categories):
-        _, hiddenStates ,_= self.encoder.forward(inputs, mask)
+    def forward(self, inputs, mask, categories, reutrn_score= False):
+        if reutrn_score: 
+            _, hiddenStates ,break_probs= self.encoder.forward(inputs, mask)
+            output = self.outputHead.forward(hiddenStates, categories )
+            return output, break_probs
+        else: 
+
+            _, hiddenStates ,_= self.encoder.forward(inputs, mask)
         
-        output = self.outputHead.forward(hiddenStates, categories )
-        return output
+            output = self.outputHead.forward(hiddenStates, categories )
+            return output
 
 
 #Base transformer
