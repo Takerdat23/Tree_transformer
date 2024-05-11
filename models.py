@@ -162,11 +162,18 @@ class Tree_transfomer(nn.Module):
         
         
 
-    def forward(self, inputs, mask):
-        x ,  _ ,_= self.encoder.forward(inputs, mask)
-        
-        output = self.outputHead.forward(x )
-        return output
+    def forward(self, inputs, mask, reutrn_score= False):
+        if reutrn_score: 
+            x ,  _ ,break_probs= self.encoder.forward(inputs, mask)
+            
+            output = self.outputHead.forward(x )
+            return output, break_probs
+        else:
+            x ,  _ ,_= self.encoder.forward(inputs, mask)
+            
+            output = self.outputHead.forward(x )
+            return output
+    
 
 
 #Base transformer
