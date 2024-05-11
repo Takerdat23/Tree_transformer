@@ -32,7 +32,7 @@ class NLI_Output(nn.Module):
          Output: sentiment output 
         """
 
-        print(encoder_output.shape)
+        
         x = encoder_output[: , 0 , :]
       
         x= self.norm(x)
