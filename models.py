@@ -108,7 +108,7 @@ class Encoder(nn.Module):
        
         x= self.intermidiate(x)
         x= self.output(x)
-        # break_probs = torch.stack(break_probs, dim=1)
+        break_probs = torch.stack(break_probs, dim=1)
         return x, hidden_states, break_probs
 
 
