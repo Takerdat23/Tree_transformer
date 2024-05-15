@@ -248,18 +248,18 @@ class Solver():
                     category_predictions[i].append(sentiment_predictions[:, i].cpu().numpy())
                     category_ground_truths[i].append(sentiment_ground_truth[:, i].cpu().numpy())
 
-        # Calculating accuracy per category
-        category_accuracies = {}
+        # Calculating metrics per category
+        category_metrics = {}
         for i in range(len(self.data_util.categories)):
             pred = np.concatenate(category_predictions[i])
             truth = np.concatenate(category_ground_truths[i])
-            accuracy = np.mean(pred == truth)
-            category_accuracies[self.data_util.categories[i]] = accuracy
+            accuracy = accuracy_score(truth, pred)
+            f1 = f1_score(truth, pred, average='weighted')  # You can choose 'macro' or 'binary' based on your specific needs
+            category_metrics[self.data_util.categories[i]] = {'Accuracy': accuracy, 'F1 Score': f1}
 
         # Output the results
-        print("Category Accuracies:", category_accuracies)
-        return category_accuracies
-
+        print("Category Metrics:", category_metrics)
+        return category_metrics
 
    
     
@@ -361,7 +361,7 @@ class Solver():
                 print(f"Epoch {epoch} Validation accuracy (Aspect): ", aspect_precision)
                 print(f"Epoch {epoch} Validation accuracy (Sentiment): ", sentiment_precision)
 
-                combined_accuracy = (aspect_precision + sentiment_precision) / 2
+                combined_accuracy = (aspect_f1 + sentiment_f1) / 2
                 if (self.args.wandb_api != ""):
                 
                     wandb.log({"Validation Accuracy": combined_accuracy})
@@ -370,6 +370,9 @@ class Solver():
                     best_combined_accuracy = combined_accuracy
                     best_epoch = epoch
                     best_model_state = self.model.state_dict()
+                
+                self.save_model(self.model, optim, epoch, step, self.model_dir)
+                
 
         except KeyboardInterrupt:
             if best_model_state != None: 
