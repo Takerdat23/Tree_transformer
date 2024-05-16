@@ -208,11 +208,13 @@ class Solver():
         # Generate classification reports
         report_aspect = classification_report(all_aspect_ground_truths, all_aspect_predictions, target_names=categories)
         print("Aspect" , report_aspect )
+        aspect_f1 = f1_score(all_aspect_ground_truths, all_aspect_predictions, average='weighted')
 
         report_sentiment = classification_report(all_sentiment_ground_truths, all_sentiment_predictions, target_names=sentiment)
         print("Sentiment" , report_sentiment )
+        Sentiment_f1 = f1_score(all_sentiment_ground_truths, all_sentiment_predictions, average='weighted')
 
-        return report_aspect , report_sentiment
+        return aspect_f1 , Sentiment_f1
 
     
     # def test(self):
