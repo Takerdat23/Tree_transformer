@@ -3,7 +3,7 @@
     "Model_name": "vinai/phobert-base" , 
     "M_Constituent": 1, 
     "d_model": 768, 
-    "d_ff": 2048, 
+    "d_ff": 3072, 
     "heads": 12, 
     "dropout" :0.1
 }
