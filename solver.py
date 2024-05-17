@@ -457,7 +457,7 @@ class Solver():
                     best_epoch = epoch
                     best_model_state = self.model.state_dict()
                 
-                self.save_model(self.model, optim, epoch, step, self.model_dir)
+                # self.save_model(self.model, optim, epoch, step, self.model_dir)
                 
 
         except KeyboardInterrupt:
