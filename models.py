@@ -10,8 +10,11 @@ from transformers import BertModel, BertConfig, AutoTokenizer, AutoModelForSeq2S
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 
 
-class Topic_SA_Output(nn.Module): 
-    def __init__(self, d_input, topic_output, sentiment_output):
+
+
+    
+class HSD_Output(nn.Module): 
+    def __init__(self, dropout , d_input, d_output):
         """
         Initialization 
         dropout: dropout percent
@@ -19,49 +22,15 @@ class Topic_SA_Output(nn.Module):
         d_output: output dimension 
         categories: categories list
         """
-        super(Topic_SA_Output, self).__init__()
-        self.Topicdense = nn.Linear(d_input , topic_output,  bias=True)
-        self.SentimentDense = nn.Linear(d_input , sentiment_output,  bias=True)
-     
-   
-    
-
-    def forward(self, model_output ):
-        """ 
-         x : Model output 
-         categories: aspect, categories  
-         Output: sentiment output 
-        """
-        pooled_output = model_output[-1][: , 0 , :]
-
-        topic = self.Topicdense(pooled_output )
-
-        sentiment = self.SentimentDense(pooled_output)
-
-        return topic , sentiment
-
-
-
-
-    
-class Aspect_Based_SA_Output(nn.Module): 
-    def __init__(self, dropout , d_input, d_output, num_categories):
-        """
-        Initialization 
-        dropout: dropout percent
-        d_input: Model dimension 
-        d_output: output dimension 
-        categories: categories list
-        """
-        super(Aspect_Based_SA_Output, self).__init__()
-        self.dense = nn.Linear(d_input * 4 , d_output *num_categories ,  bias=True)
+        super(HSD_Output, self).__init__()
+        self.dense = nn.Linear(d_input * 4 , d_output  ,  bias=True)
         # self.softmax = nn.Softmax(dim=-1) 
         self.norm = nn.LayerNorm(d_output, eps=1e-12)
         self.dropout = nn.Dropout(dropout)
-        self.num_categories = num_categories
+        
         self.num_labels= d_output
 
-    def forward(self, model_output ,categories ):
+    def forward(self, model_output):
         """ 
          x : Model output 
          categories: aspect, categories  
@@ -69,12 +38,10 @@ class Aspect_Based_SA_Output(nn.Module):
         """
         pooled_output = torch.cat([model_output[i] for i in range(-4, 0)], dim=-1)[: , 0 , :]
 
-      
-      
         x = self.dropout(pooled_output)
         output = self.dense(x)
         # Reshape the output to match the required dimensions
-        output = output.view(-1, self.num_categories, self.num_labels)
+       
         return output
 
 
@@ -89,10 +56,10 @@ class EncoderOutputLayer(nn.Module):
             (dropout): Dropout(p=0.1, inplace=False)
           )
     """
-    def __init__(self, dropout , d_input, d_output):
+    def __init__(self, dropout , d_input):
         super(EncoderOutputLayer, self).__init__()
-        self.dense = nn.Linear(d_input, d_output, bias=True)
-        self.norm = nn.LayerNorm(d_output, eps=1e-05)
+        self.dense = nn.Linear(d_input * 4, d_input, bias=True)
+        self.norm = nn.LayerNorm(d_input, eps=1e-05)
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
@@ -108,9 +75,9 @@ class IntermidiateOutput(nn.Module):
             (intermediate_act_fn): GELUActivation()
     )
     """
-    def __init__(self,  d_input, vocab_size):
+    def __init__(self,  d_input):
         super(IntermidiateOutput, self).__init__()
-        self.dense = nn.Linear(d_input, vocab_size, bias=True)
+        self.dense = nn.Linear(d_input, d_input * 4, bias=True)
         self.intermediate_act_fn = GELU()
  
 
@@ -125,8 +92,8 @@ class Encoder(nn.Module):
         super(Encoder, self).__init__()
         self.word_embed = word_embed
         self.layers = clones(layer, N)
-        self.intermidiate = IntermidiateOutput( d_model, vocab_size)
-        self.output = EncoderOutputLayer(dropout, d_model, d_model)
+        self.intermidiate = IntermidiateOutput( d_model)
+        self.output = EncoderOutputLayer(dropout, d_model)
         
         
 
@@ -143,6 +110,8 @@ class Encoder(nn.Module):
 
        
         x= self.intermidiate(x)
+
+        x= self.output(x)
        
         break_probs = torch.stack(break_probs, dim=1)
         return x, hidden_states, break_probs
@@ -377,9 +346,9 @@ class Constituent_Pretrained_BART(nn.Module):
 
 
     
-class ABSA_Tree_transfomer(nn.Module): 
-    def __init__(self, vocab_size, N=12, d_model=768, d_ff=2048, h=12, dropout=0.1, num_categories= 10, no_cuda= False):
-        super(ABSA_Tree_transfomer, self).__init__()
+class Tree_transfomer(nn.Module): 
+    def __init__(self, vocab_size, N=12, d_model=768, d_ff=2048, h=12, dropout=0.1, no_cuda= False):
+        super(Tree_transfomer, self).__init__()
         "Helper: Construct a model from hyperparameters."
         self.no_cuda=  no_cuda
         self.c = copy.deepcopy
@@ -390,21 +359,21 @@ class ABSA_Tree_transfomer(nn.Module):
         self.word_embed = nn.Sequential(Embeddings(d_model, vocab_size), self.c(self.position))
         self.encoder = Encoder(EncoderLayer(d_model, self.c(self.attn), self.c(self.ff), vocab_size, self.group_attn, dropout), 
                     N, d_model, vocab_size, self.c(self.word_embed),  dropout)
-        self.outputHead = Aspect_Based_SA_Output(dropout , d_model, 4, num_categories ) # 4 class label
+        self.outputHead = HSD_Output(dropout , d_model, 3) # 4 class label
 
         
         
 
-    def forward(self, inputs, mask, categories, reutrn_score= False):
+    def forward(self, inputs, mask, reutrn_score= False):
         if reutrn_score: 
             _, hiddenStates ,break_probs= self.encoder.forward(inputs, mask)
-            output = self.outputHead.forward(hiddenStates, categories )
+            output = self.outputHead.forward(hiddenStates )
             return output, break_probs
         else: 
 
             _, hiddenStates ,_= self.encoder.forward(inputs, mask)
         
-            output = self.outputHead.forward(hiddenStates, categories )
+            output = self.outputHead.forward(hiddenStates)
             return output
 
 
@@ -439,8 +408,8 @@ class BaseEncoder(nn.Module):
         super(BaseEncoder, self).__init__()
         self.word_embed = word_embed
         self.layers = clones(layer, N)
-        self.intermidiate = IntermidiateOutput( d_model, vocab_size)
-        self.output = EncoderOutputLayer(dropout, d_model, d_model)
+        self.intermidiate = IntermidiateOutput( d_model)
+        self.output = EncoderOutputLayer(dropout, d_model)
         
         
 
@@ -456,6 +425,8 @@ class BaseEncoder(nn.Module):
         
 
         x= self.intermidiate(x)
+
+        x= self.output(x)
       
        
    
@@ -471,9 +442,9 @@ class BaseEncoder(nn.Module):
         pass
 
 
-class ABSA_transfomer(nn.Module): 
-    def __init__(self, vocab_size, N=12, d_model=768, d_ff=2048, h=12, num_categories = 10 ,  dropout=0.1, no_cuda= False):
-        super(ABSA_transfomer, self).__init__()
+class Transfomer(nn.Module): 
+    def __init__(self, vocab_size, N=12, d_model=768, d_ff=2048, h=12,  dropout=0.1, no_cuda= False):
+        super(Transfomer, self).__init__()
         "Helper: Construct a model from hyperparameters."
 
         self.no_cuda=  no_cuda
@@ -484,15 +455,15 @@ class ABSA_transfomer(nn.Module):
         self.word_embed = nn.Sequential(Embeddings(d_model, vocab_size), self.c(self.position))
         self.encoder = BaseEncoder(BaseEncoderLayer(d_model, self.c(self.attn), self.c(self.ff), vocab_size, dropout), 
                     N, d_model, vocab_size, self.c(self.word_embed),  dropout)
-        self.outputHead = Aspect_Based_SA_Output(dropout , d_model, 4, num_categories ) # 4 class label
+        self.outputHead = HSD_Output(dropout , d_model, 3) # 4 class label
 
         
         
 
-    def forward(self, inputs, mask, categories):
+    def forward(self, inputs, mask):
         _, hiddenStates= self.encoder.forward(inputs, mask)
       
-        output = self.outputHead.forward(hiddenStates, categories)
+        output = self.outputHead.forward(hiddenStates)
         return output
     
 
