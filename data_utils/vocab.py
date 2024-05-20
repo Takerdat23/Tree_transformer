@@ -47,6 +47,7 @@ class Vocab(object):
 
         freqs, tags, self.max_sentence_length = self.make_vocab(paths)
         self.i2tags = {ith: tag for ith, tag in enumerate(list(tags), 1)}
+        self.i2tags[0] = self.padding_token
         self.tags2i = {tag: ith for ith, tag in enumerate(list(tags), 1)}
         counter = freqs.copy()
 
@@ -100,17 +101,17 @@ class Vocab(object):
         return vec.long()
 
     def encode_tag(self, tags: list[str]) -> torch.Tensor:
-        """ Turn a answer into a vector of indices and a question length """
+        """ Turn tags into a vector of indices and a question length """
         vec = torch.zeros((len(tags), )).long()
         for ith in range(len(tags)):
             tag = tags[ith]
             vec[ith] = self.tags2i[tag]
 
-        return vec
+        return vec.long()
 
     def decode_sentence(self, sentence_vecs: torch.Tensor, join_words=True) -> List[str]:
         '''
-            question_vecs: (bs, max_length)
+            sentence_vecs: (bs, max_length)
         '''
         sentences = []
         for vec in sentence_vecs:
@@ -122,16 +123,17 @@ class Vocab(object):
 
         return sentences
 
-    def decode_tag(self, tag_vecs: torch.Tensor) -> List[str]:
+    def decode_tag(self, tag_vecs: torch.Tensor, mask: torch.Tensor) -> List[str]:
         '''
-            answer_vecs: (bs, max_length)
+            tag_vecs: (bs, max_length)
         '''
-        tags = []
-        for vec in tag_vecs:
-            vec = vec.tolist()
-            tags.append(self.i2tags[vec])
+        batch_tags = []
+        for tag_vec in tag_vecs:
+            tags = tag_vec.tolist()
+            tags = [self.i2tags[tag] for tag in tags]
+            batch_tags.append(tags)
 
-        return tags
+        return batch_tags
 
     def __eq__(self, other):
         if self.freqs != other.freqs:
@@ -148,7 +150,7 @@ class Vocab(object):
     
     @property
     def total_tags(self) -> int:
-        return len(self.tags2i)
+        return len(self.tags2i) + 1
     
     @property
     def size(self):

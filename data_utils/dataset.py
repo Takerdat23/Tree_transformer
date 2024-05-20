@@ -26,12 +26,12 @@ class PhoNERT_Dataset(Dataset):
 
     def __getitem__(self, idx: int) -> dict:
         annotation = self.annotations[idx]
-        inputs_ids = self.vocab.encode_sentence(
+        input_ids = self.vocab.encode_sentence(
             preprocess_sentence(annotation["sentence"])
         )
         tags = self.vocab.encode_tag(annotation["tags"])
 
         return {
-            "input_ids": inputs_ids,
+            "input_ids": input_ids,
             "tags": tags
         }

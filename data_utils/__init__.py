@@ -1,7 +1,6 @@
 import torch
 
-def pad_tensor(tensors: list[torch.Tensor], pad_value: int = 0):
-    max_len = max([tensor.shape[-1] for tensor in tensors])
+def pad_tensor(tensors: list[torch.Tensor], max_len: int, pad_value: int = 0):
     padded_tensors = []
     for tensor in tensors:
         if tensor.dim() == 2:
@@ -19,9 +18,10 @@ def collate_fn(items: list) -> torch.Tensor:
     batch_tags = []
     for item in items:
         batch_input_ids.append(item["input_ids"].unsqueeze(0))
-        batch_tags.append(item["tags"])
+        batch_tags.append(item["tags"].unsqueeze(0))
 
-    batch_input_ids = pad_tensor(batch_input_ids)
+    max_len = max([input_ids.shape[-1] for input_ids in batch_input_ids])
+    batch_input_ids = pad_tensor(batch_input_ids, max_len)
     batch_tags = pad_tensor(batch_tags)
 
     return batch_input_ids, batch_tags

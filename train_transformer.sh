@@ -6,6 +6,7 @@ python3 train_transformer.py    --device cuda:0 \
                                 --num-layers 6 \
                                 --d-ff 2048 \
                                 --lr 0.004 \
+                                --num-workers 2 \
                                 --train-path data/PhoNER_COVID19/syllable/train_syllable.json \
                                 --dev-path data/PhoNER_COVID19/syllable/dev_syllable.json \
                                 --test-path data/PhoNER_COVID19/syllable/test_syllable.json \

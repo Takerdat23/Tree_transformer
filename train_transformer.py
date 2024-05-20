@@ -155,20 +155,20 @@ def start(args):
     print("Creating model ...")
     model = Transformer(
         d_model=args.d_model,
-        num_heads=args.num_heas,
+        num_heads=args.num_heads,
         num_layers=args.num_layers,
         d_ff=args.d_ff,
         vocab=vocab
     ).to(args.device)
-    loss_fn = nn.CrossEntropyLoss(ignore_index=vocab.padding_idx).to(args.decice)
+    loss_fn = nn.CrossEntropyLoss(ignore_index=vocab.padding_idx).to(args.device)
     optimizer = Adam(model.parameters(), lr=args.lr)
 
     best_f1 = 0
     patient = 0
     epoch = 1
     while True:
-        train(model, loss_fn, optimizer, train_dataloader, epoch)
-        f1_score = validate(model, dev_dataloader, epoch)
+        train(model, loss_fn, optimizer, train_dataloader, epoch, args.device)
+        f1_score = validate(model, dev_dataloader, epoch, args.device)
         if f1_score > best_f1:
             best_f1 = f1_score
             save_checkpoint(model, 
@@ -183,7 +183,7 @@ def start(args):
                 break
     
     print("Evaluating on the test set ...")
-    results = evaluate(model, test_dataloader, vocab)
+    results = evaluate(model, test_dataloader, vocab, args.device)
     json.dump(results, os.path.join(
         args.checkpoint_path,
         "results.json"
@@ -200,6 +200,7 @@ if __name__ == "__main__":
     parser.add_argument("--num-layers", type=int, required=True)
     parser.add_argument("--d-ff", type=int, required=True)
     parser.add_argument("--lr", type=float, required=True)
+    parser.add_argument("--num-workers", type=int, required=True)
     # arguments for the dataset
     parser.add_argument("--train-path", type=str, required=True)
     parser.add_argument("--dev-path", type=str, required=True)
