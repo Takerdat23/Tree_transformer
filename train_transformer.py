@@ -14,9 +14,11 @@ import json
 import argparse
 import os
 
-device = torch.device("mps")
-
-def train(model: nn.Module, loss_fn, optimizer, dataloader: DataLoader, epoch: int):
+def train(model: nn.Module, 
+          loss_fn, optimizer, 
+          dataloader: DataLoader, 
+          epoch: int,
+          device: str):
     model.train()
     with tqdm(dataloader, desc=f"Epoch {epoch} - Training") as pbar:
         for input_ids, tags in pbar:
@@ -35,7 +37,10 @@ def train(model: nn.Module, loss_fn, optimizer, dataloader: DataLoader, epoch: i
             })
             pbar.update()
 
-def validate(model: nn.Module, dataloader: DataLoader, epoch: int):
+def validate(model: nn.Module, 
+             dataloader: DataLoader, 
+             epoch: int,
+             device: str):
     model.eval()
     f1_scorer = F1()
     scores = []
@@ -54,7 +59,10 @@ def validate(model: nn.Module, dataloader: DataLoader, epoch: int):
 
     return sum(scores) / len(scores)
 
-def evaluate(model: nn.Module, dataloader: DataLoader, vocab: Vocab):
+def evaluate(model: nn.Module, 
+             dataloader: DataLoader, 
+             vocab: Vocab,
+             device: str):
     model.eval()
     f1_scorer = F1()
     scores = []
@@ -89,8 +97,13 @@ def evaluate(model: nn.Module, dataloader: DataLoader, vocab: Vocab):
 
     return results
 
-def save_checkpoint(model: nn.Module, checkpoint_path: str):
-    pass
+def save_checkpoint(model: nn.Module, 
+                    optimizer,
+                    checkpoint_path: str):
+    torch.save({
+        "model_state_dict": model.state_dict(),
+        "optim_state_dict": optimizer.state_dict()
+    }, checkpoint_path)
 
 def start(args):
     print("Creating vocab ...")
@@ -146,8 +159,8 @@ def start(args):
         num_layers=args.num_layers,
         d_ff=args.d_ff,
         vocab=vocab
-    ).to(device)
-    loss_fn = nn.CrossEntropyLoss(ignore_index=vocab.padding_idx).to(device)
+    ).to(args.device)
+    loss_fn = nn.CrossEntropyLoss(ignore_index=vocab.padding_idx).to(args.decice)
     optimizer = Adam(model.parameters(), lr=args.lr)
 
     best_f1 = 0
@@ -158,9 +171,13 @@ def start(args):
         f1_score = validate(model, dev_dataloader, epoch)
         if f1_score > best_f1:
             best_f1 = f1_score
-            save_checkpoint(model, "best_model.pth", args.checkpoint_path)
+            save_checkpoint(model, 
+                            optimizer, 
+                            os.path.join(args.checkpoint_path, "best_model"))
         else:
-            save_checkpoint(model, "last_model.pth", args.checkpoint_path)
+            save_checkpoint(model, 
+                            optimizer, 
+                            os.path.join(args.checkpoint_path, "last_model"))
             patient += 1
             if patient > 5:
                 break
