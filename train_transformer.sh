@@ -1,0 +1,11 @@
+python3 train_transformer.py    --device cuda:0 \
+                                --checkpoint-path checkpoint/transformer \
+                                --batch-size 16 \
+                                --d-model 512 \
+                                --num-heads 8 \
+                                --num-layers 6 \
+                                --d-ff 2048 \
+                                --lr 0.004 \
+                                --train-path data/PhoNER_COVID19/train_syllable.json \
+                                --dev-path data/PhoNER_COVID19/dev_syllable.json \
+                                --test-path data/PhoNER_COVID19/test_syllable.json \
