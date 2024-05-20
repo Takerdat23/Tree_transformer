@@ -26,12 +26,13 @@ def train(model: nn.Module,
             # forward
             input_ids = input_ids.to(device)
             tags = tags.to(device)
-            _, logits = model(input_ids)
+            logits = model(input_ids)
+            outputs = logits.argmax(dim=-1)
             # backward
             optimizer.zero_grad()
             total_tags = logits.shape[-1]
             loss = loss_fn(
-                logits.reshape(-1, total_tags),
+                outputs.reshape(-1, total_tags),
                 tags.reshape(-1))
             loss.backward()
             optimizer.step()
@@ -53,7 +54,8 @@ def validate(model: nn.Module,
         for input_ids, tags in pbar:
             input_ids = input_ids.to(device)
             tags = tags.to(device)
-            outputs, _ = model(input_ids)
+            logits = model(input_ids)
+            outputs = logits.argmax(dim=-1)
             score = f1_scorer.compute_score(tags, outputs)
             scores.append(score)
 
@@ -79,7 +81,8 @@ def evaluate(model: nn.Module,
         for input_ids, tags in pbar:
             input_ids = input_ids.to(device)
             tags = tags.to(device)
-            outputs, _ = model(input_ids)
+            logits = model(input_ids)
+            outputs = logits.argmax(dim=-1)
 
             sentence = vocab.decode_sentence(input_ids)[0]
             predicted_tag = vocab.decode_tag(outputs)[0]
