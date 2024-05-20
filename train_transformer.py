@@ -20,6 +20,7 @@ def train(model: nn.Module,
           epoch: int,
           device: str):
     model.train()
+    losses = []
     with tqdm(dataloader, desc=f"Epoch {epoch} - Training") as pbar:
         for input_ids, tags in pbar:
             # forward
@@ -28,12 +29,16 @@ def train(model: nn.Module,
             _, logits = model(input_ids)
             # backward
             optimizer.zero_grad()
-            loss = loss_fn(logits, tags)
+            total_tags = logits.shape[-1]
+            loss = loss_fn(
+                logits.reshape(-1, total_tags),
+                tags.reshape(-1))
             loss.backward()
             optimizer.step()
+            losses.append(loss.item())
 
             pbar.set_postfix({
-                "Loss": loss.item()
+                "Loss": sum(losses) / len(losses)
             })
             pbar.update()
 
