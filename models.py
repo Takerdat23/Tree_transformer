@@ -404,8 +404,8 @@ class BaseEncoder(nn.Module):
         super(BaseEncoder, self).__init__()
         self.word_embed = word_embed
         self.layers = clones(layer, N)
-        self.intermidiate = IntermidiateOutput( d_model, vocab_size)
-        self.output = EncoderOutputLayer(dropout, d_model, d_model)
+        self.intermidiate = IntermidiateOutput( d_model, d_model* 4)
+        self.output = EncoderOutputLayer(dropout, d_model* 4, d_model)
         
         
 
