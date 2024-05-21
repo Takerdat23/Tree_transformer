@@ -41,11 +41,11 @@ class Solver():
 
 
         if args.strategy == "tree": 
-            self.model = ABSA_Tree_transfomer(  vocab_size= self.vocab_size, N = modelConfig['N_layer'], d_model= modelConfig['d_model'], 
+            self.model = Tree_transfomer(  vocab_size= self.vocab_size, N = modelConfig['N_layer'], d_model= modelConfig['d_model'], 
                                           d_ff= modelConfig['d_ff'], h= modelConfig['heads'],   dropout = modelConfig['dropout'], no_cuda=args.no_cuda)
         elif args.strategy == 'base' : 
 
-            self.model = ABSA_transfomer( vocab_size= self.vocab_size, N = modelConfig['N_layer'], d_model= modelConfig['d_model'], 
+            self.model = Transfomer( vocab_size= self.vocab_size, N = modelConfig['N_layer'], d_model= modelConfig['d_model'], 
                                           d_ff= modelConfig['d_ff'], h= modelConfig['heads'] ,  dropout = modelConfig['dropout'], no_cuda=args.no_cuda)
         elif args.strategy == 'PretrainBERT' : 
 
@@ -79,86 +79,6 @@ class Solver():
   
 
     
-    # def evaluate(self):
-    #     if self.args.no_cuda == False:
-    #         device = "cuda"
-    #     else:
-    #         device = "cpu"
-
-    #     self.model.to(device)
-    #     self.model.eval()
-
-    #     all_aspect_predictions = []
-    #     all_sentiment_predictions = []
-    #     all_aspect_ground_truth = []
-    #     all_sentiment_ground_truth = []
-
-    #     with torch.no_grad():
-    #         for step, batch in enumerate(self.data_util.val_loader):
-    #             inputs = batch['input_ids'].to(device)
-    #             mask = batch['attention_mask'].to(device)
-    #             labels = batch['labels'].to(device)
-
-    #             output = self.model(inputs, mask, self.data_util.categories)
-
-    #             output = torch.sigmoid(output)
-    #             output = output.float()
-
-               
-
-    #             y_test_argmax = np.argmax(output.cpu(), axis=-1)
-    #             print("labels: ", y_test_argmax.shape)
-
-
-    #             aspect_predictions = (output[:, :, 0] > 0.5).long()
-    #             sentiment_predictions = (output[:, :, 1:] > 0.5).long()
-
-    #             aspect_ground_truth = labels[:, :, 0].long()
-    #             sentiment_ground_truth = labels[:, :, 1:].long()
-
-    #             all_aspect_predictions.append(aspect_predictions.cpu().numpy())
-    #             all_sentiment_predictions.append(sentiment_predictions.cpu().numpy())
-    #             all_aspect_ground_truth.append(aspect_ground_truth.cpu().numpy())
-    #             all_sentiment_ground_truth.append(sentiment_ground_truth.cpu().numpy())
-
-    #     all_aspect_predictions = np.concatenate(all_aspect_predictions)
-    #     all_sentiment_predictions = np.concatenate(all_sentiment_predictions)
-    #     all_aspect_ground_truth = np.concatenate(all_aspect_ground_truth)
-    #     all_sentiment_ground_truth = np.concatenate(all_sentiment_ground_truth)
-
-        
-
-
-    #     all_aspect_predictions = np.concatenate(all_aspect_predictions)
-    #     all_sentiment_predictions = np.concatenate(all_sentiment_predictions)
-    #     all_aspect_ground_truth = np.concatenate(all_aspect_ground_truth)
-    #     all_sentiment_ground_truth = np.concatenate(all_sentiment_ground_truth)
-
-    #     aspect_precision = precision_score(all_aspect_ground_truth.flatten(), all_aspect_predictions.flatten())
-    #     aspect_recall = recall_score(all_aspect_ground_truth.flatten(), all_aspect_predictions.flatten())
-    #     aspect_f1 = f1_score(all_aspect_ground_truth.flatten(), all_aspect_predictions.flatten())
-
-    #     sentiment_precision = precision_score(all_sentiment_ground_truth.flatten(), all_sentiment_predictions.flatten(), average='weighted')
-    #     sentiment_recall = recall_score(all_sentiment_ground_truth.flatten(), all_sentiment_predictions.flatten(), average='weighted')
-    #     sentiment_f1 = f1_score(all_sentiment_ground_truth.flatten(), all_sentiment_predictions.flatten(), average='weighted')
-
-    #     result = {
-    #         "Val Aspect Precision": aspect_precision,
-    #         "Val Aspect Recall": aspect_recall,
-    #         "Val Aspect F1 Score": aspect_f1,
-    #         "Val Sentiment Precision": sentiment_precision,
-    #         "Val Sentiment Recall": sentiment_recall,
-    #         "Val Sentiment F1 Score": sentiment_f1
-    #     }
-
-    #     print(result)
-
-
-
-        
-
-    #     return aspect_precision, aspect_recall, aspect_f1, sentiment_precision, sentiment_recall, sentiment_f1
-    
     def evaluate(self):
         if not self.args.no_cuda:
             device = "cuda"
@@ -168,115 +88,54 @@ class Solver():
         self.model.to(device)
         self.model.eval()
 
-        all_aspect_predictions = []
-        all_aspect_ground_truths = []
-        all_sentiment_predictions = []
-        all_sentiment_ground_truths = []
+        all_toxic_predictions = []
+        all_toxic_ground_truths = []
+        all_constructive_predictions = []
+        all_constructive_ground_truths = []
 
         with torch.no_grad():
+            epoch_progress = tqdm(total=len(self.data_util.val_loader), position=0)
             for step, batch in enumerate(self.data_util.val_loader):
                 inputs = batch['input_ids'].to(device)
                 mask = batch['attention_mask'].to(device)
-                labels = batch['labels'].to(device)
+                toxic_labels = batch['toxicity'].to(device)
+                construct_labels = batch['constructive'].to(device)
 
-                output = self.model(inputs, mask, self.data_util.categories)
-                output = output.cpu()
+                toxic, construct  = self.model(inputs, mask)
+                toxic = toxic.cpu()
+                construct   = construct.cpu()
 
                 # Extracting the index of the maximum score from each prediction
-                predictions_indices = np.argmax(output, axis=-1)
-                ground_truth_indices = np.argmax(labels.cpu().numpy(), axis=-1)
+                toxic_predictions_indices = np.argmax(toxic, axis=-1)
+                constructive_predictions_indices = np.argmax(construct, axis=-1)
 
-            
+                toxic_ground_truth_indices = np.argmax(toxic_labels.cpu().numpy(), axis=-1)
+                constructive_ground_truth_indices = np.argmax(construct_labels.cpu().numpy(), axis=-1)
 
-                categories = self.data_util.categories.append(" ")
-                sentiment = ['None', "Positive", "Negative", "Neutral"]
+                toxic_label = ['No constructive', 'Constructive']
+                constructive_label = ['No constructive', 'Constructive']
 
-                for pred , true in zip(predictions_indices , ground_truth_indices): 
-          
-                    predictions_Aspect = [self.data_util.categories[idx] if sentiment != 0 else " " for idx , sentiment in enumerate(pred) ]
-                    ground_truths_Aspect = [self.data_util.categories[idx] if sentiment != 0 else " " for idx ,  sentiment in enumerate(true) ]
 
-                    predictions_Sentiment = [sentiment[idx]  for idx in pred]
-                    ground_truths_Sentiment = [sentiment [idx]  for idx in true ]
+  
 
-                    all_aspect_predictions.extend(predictions_Aspect)
-                    all_aspect_ground_truths.extend(ground_truths_Aspect)
+                all_toxic_predictions.extend(toxic_predictions_indices)
+                all_toxic_ground_truths.extend(toxic_ground_truth_indices)
 
-                    all_sentiment_predictions.extend(predictions_Sentiment)
-                    all_sentiment_ground_truths.extend(ground_truths_Sentiment)
+                all_constructive_predictions.extend(constructive_predictions_indices)
+                all_constructive_ground_truths.extend(constructive_ground_truth_indices)
+                epoch_progress.update(1)
+        epoch_progress.close()
 
         # Generate classification reports
-        report_aspect = classification_report(all_aspect_ground_truths, all_aspect_predictions, target_names=categories)
-        print("Aspect" , report_aspect )
-        aspect_f1 = f1_score(all_aspect_ground_truths, all_aspect_predictions, average='weighted')
+        report_toxic = classification_report(all_toxic_ground_truths, all_toxic_predictions, target_names=toxic_label)
+        print("Aspect" , report_toxic)
+        toxic_f1 = f1_score(all_toxic_ground_truths, all_toxic_predictions, average='weighted')
 
-        report_sentiment = classification_report(all_sentiment_ground_truths, all_sentiment_predictions, target_names=sentiment)
-        print("Sentiment" , report_sentiment )
-        Sentiment_f1 = f1_score(all_sentiment_ground_truths, all_sentiment_predictions, average='weighted')
+        report_constructive = classification_report(all_constructive_ground_truths, all_constructive_predictions, target_names=constructive_label)
+        print("Sentiment" , report_constructive )
+        constructive_f1 = f1_score(all_constructive_ground_truths, all_constructive_predictions, average='weighted')
 
-        return aspect_f1 , Sentiment_f1
-
-    
-    # def test(self):
-    #     if self.args.no_cuda == False:
-    #         device = "cuda"
-    #     else:
-    #         device = "cpu"
-
-    #     self.model.to(device)
-    #     self.model.eval()
-
-    #     all_aspect_predictions = []
-    #     all_sentiment_predictions = []
-    #     all_aspect_ground_truth = []
-    #     all_sentiment_ground_truth = []
-
-    #     with torch.no_grad():
-    #         for step, batch in enumerate(self.data_util.test_loader):
-    #             inputs = batch['input_ids'].to(device)
-    #             mask = batch['attention_mask'].to(device)
-    #             labels = batch['labels'].to(device)
-
-    #             output = self.model(inputs, mask, self.data_util.categories)
-
-    #             output = torch.sigmoid(output)
-    #             output = output.float()
-
-    #             aspect_predictions = (output[:, :, 0] > 0.5).long()
-    #             sentiment_predictions = (output[:, :, 1:] > 0.5).long()
-
-    #             aspect_ground_truth = labels[:, :, 0].long()
-    #             sentiment_ground_truth = labels[:, :, 1:].long()
-
-    #             all_aspect_predictions.append(aspect_predictions.cpu().numpy())
-    #             all_sentiment_predictions.append(sentiment_predictions.cpu().numpy())
-    #             all_aspect_ground_truth.append(aspect_ground_truth.cpu().numpy())
-    #             all_sentiment_ground_truth.append(sentiment_ground_truth.cpu().numpy())
-
-    #     all_aspect_predictions = np.concatenate(all_aspect_predictions)
-    #     all_sentiment_predictions = np.concatenate(all_sentiment_predictions)
-    #     all_aspect_ground_truth = np.concatenate(all_aspect_ground_truth)
-    #     all_sentiment_ground_truth = np.concatenate(all_sentiment_ground_truth)
-
-    #     aspect_precision = precision_score(all_aspect_ground_truth.flatten(), all_aspect_predictions.flatten())
-    #     aspect_recall = recall_score(all_aspect_ground_truth.flatten(), all_aspect_predictions.flatten())
-    #     aspect_f1 = f1_score(all_aspect_ground_truth.flatten(), all_aspect_predictions.flatten())
-
-    #     sentiment_precision = precision_score(all_sentiment_ground_truth.flatten(), all_sentiment_predictions.flatten(), average='weighted')
-    #     sentiment_recall = recall_score(all_sentiment_ground_truth.flatten(), all_sentiment_predictions.flatten(), average='weighted')
-    #     sentiment_f1 = f1_score(all_sentiment_ground_truth.flatten(), all_sentiment_predictions.flatten(), average='weighted')
-
-    #     ressult = {
-    #         "Test Aspect Precision": aspect_precision,
-    #         "Test Aspect Recall": aspect_recall,
-    #         "Test Aspect F1 Score": aspect_f1,
-    #         "Test Sentiment Precision": sentiment_precision,
-    #         "Test Sentiment Recall": sentiment_recall,
-    #         "Test Sentiment F1 Score": sentiment_f1
-    #     }
-    #     print(ressult)
-
-    #     return aspect_precision, aspect_recall, aspect_f1, sentiment_precision, sentiment_recall, sentiment_f1
+        return toxic_f1  , constructive_f1
 
 
     def test(self):
@@ -288,58 +147,59 @@ class Solver():
         self.model.to(device)
         self.model.eval()
 
-        all_aspect_predictions = []
-        all_aspect_ground_truths = []
-        all_sentiment_predictions = []
-        all_sentiment_ground_truths = []
+        all_toxic_predictions = []
+        all_toxic_ground_truths = []
+        all_constructive_predictions = []
+        all_constructive_ground_truths = []
 
         with torch.no_grad():
+            epoch_progress = tqdm(total=len(self.data_util.val_loader), position=0)
             for step, batch in enumerate(self.data_util.test_loader):
                 inputs = batch['input_ids'].to(device)
                 mask = batch['attention_mask'].to(device)
-                labels = batch['labels'].to(device)
+                toxic_labels = batch['toxicity'].to(device)
+                construct_labels = batch['constructive'].to(device)
 
-                output = self.model(inputs, mask, self.data_util.categories)
-                output = output.cpu()
+                toxic, construct  = self.model(inputs, mask)
+                toxic = toxic.cpu()
+                construct   = construct.cpu()
 
                 # Extracting the index of the maximum score from each prediction
-                predictions_indices = np.argmax(output, axis=-1)
-                ground_truth_indices = np.argmax(labels.cpu().numpy(), axis=-1)
+                toxic_predictions_indices = np.argmax(toxic, axis=-1)
+                constructive_predictions_indices = np.argmax(construct, axis=-1)
 
-            
+                toxic_ground_truth_indices = np.argmax(toxic_labels.cpu().numpy(), axis=-1)
+                constructive_ground_truth_indices = np.argmax(construct_labels.cpu().numpy(), axis=-1)
 
-                categories = self.data_util.categories.append(" ")
-                sentiment = ['None', "Positive", "Negative", "Neutral"]
+                toxic_label = ['No constructive', 'Constructive']
+                constructive_label = ['No constructive', 'Constructive']
 
-                for pred , true in zip(predictions_indices , ground_truth_indices): 
-          
-                    predictions_Aspect = [self.data_util.categories[idx] if sentiment != 0 else " " for idx , sentiment in enumerate(pred) ]
-                    ground_truths_Aspect = [self.data_util.categories[idx] if sentiment != 0 else " " for idx ,  sentiment in enumerate(true) ]
 
-                    predictions_Sentiment = [sentiment[idx]  for idx in pred]
-                    ground_truths_Sentiment = [sentiment [idx]  for idx in true ]
+  
 
-                    all_aspect_predictions.extend(predictions_Aspect)
-                    all_aspect_ground_truths.extend(ground_truths_Aspect)
+                all_toxic_predictions.extend(toxic_predictions_indices)
+                all_toxic_ground_truths.extend(toxic_ground_truth_indices)
 
-                    all_sentiment_predictions.extend(predictions_Sentiment)
-                    all_sentiment_ground_truths.extend(ground_truths_Sentiment)
+                all_constructive_predictions.extend(constructive_predictions_indices)
+                all_constructive_ground_truths.extend(constructive_ground_truth_indices)
+                epoch_progress.update(1)
+        epoch_progress.close()
 
         # Generate classification reports
-        report_aspect = classification_report(all_aspect_ground_truths, all_aspect_predictions, target_names=categories)
-        print("Aspect" , report_aspect )
-        aspect_precision = precision_score(all_aspect_ground_truths, all_aspect_predictions, average='weighted')
-        aspect_recall = recall_score(all_aspect_ground_truths, all_aspect_predictions, average='weighted')
-        aspect_f1 = f1_score(all_aspect_ground_truths, all_aspect_predictions, average='weighted')
+        report_toxic = classification_report(all_toxic_ground_truths, all_toxic_predictions, target_names=toxic_label)
+        print("Toxic" , report_toxic )
+        toxic_precision = precision_score(all_toxic_ground_truths, all_toxic_predictions, average='weighted')
+        toxic_recall = recall_score(all_toxic_ground_truths, all_toxic_predictions, average='weighted')
+        toxic_f1 = f1_score(all_toxic_ground_truths, all_toxic_predictions, average='weighted')
 
-        report_sentiment = classification_report(all_sentiment_ground_truths, all_sentiment_predictions, target_names=sentiment)
-        print("Sentiment" , report_sentiment )
+        report_constructive = classification_report(all_constructive_ground_truths, all_constructive_predictions, target_names=constructive_label)
+        print("Constructive" , report_constructive  )
         
-        sentiment_precision = precision_score(all_sentiment_ground_truths, all_sentiment_predictions, average='weighted')
-        sentiment_recall = recall_score(all_sentiment_ground_truths, all_sentiment_predictions, average='weighted')
-        Sentiment_f1 = f1_score(all_sentiment_ground_truths, all_sentiment_predictions, average='weighted')
+        constructive_precision = precision_score(all_constructive_ground_truths, all_constructive_predictions, average='weighted')
+        constructive_recall = recall_score(all_constructive_ground_truths, all_constructive_predictions, average='weighted')
+        constructive_f1 = f1_score(all_constructive_ground_truths, all_constructive_predictions, average='weighted')
 
-        return aspect_precision, aspect_recall, aspect_f1, sentiment_precision,  sentiment_recall,  Sentiment_f1
+        return toxic_precision, toxic_recall, toxic_f1, constructive_precision,  constructive_recall,  constructive_f1
 
    
     
@@ -403,23 +263,22 @@ class Solver():
                 for step, batch in enumerate(self.data_util.train_loader):
                     inputs = batch['input_ids'].to(device)
                     mask = batch['attention_mask'].to(device)
-                    labels = batch['labels'].to(device)
+                    toxic_labels = batch['toxicity'].to(device)
+                    construct_labels = batch['constructive'].to(device)
 
                     optim.zero_grad()
-                    output = self.model.forward(inputs, mask, self.data_util.categories)  # Assuming categories are not used for now
+                    toxic, construct = self.model.forward(inputs, mask)  
+
+              
+
+                    toxic_loss = loss_fn(toxic, toxic_labels)
+
+
+                    construct_labels = loss_fn(construct, construct_labels)
                 
-                    # Calculate loss
-                
-                    output = output.float()
-                    labels = labels.float()
+            
 
-                    # output_argmax = torch.argmax(output, dim = -1)
-
-                    # label_argmax = torch.argmax(labels, dim = -1)
-
-
-
-                    loss = loss_fn(output , labels)
+                    loss = toxic_loss + construct_labels
 
                 
               
@@ -436,18 +295,19 @@ class Solver():
                     epoch_progress.set_postfix({'Loss': loss.item()})
 
                     if (step + 1) % 100 == 0:
+                        # toxic_f1  , constructive_f1= self.evaluate()
                         elapsed = time.time() - start
                         print(f'Epoch [{epoch + 1}/{self.args.epoch}], Step [{step + 1}/{len(self.data_util.train_loader)}], '
                             f'Loss: {loss.item():.4f}, Total Time: {elapsed:.2f} sec')
                       
                 epoch_progress.close()
                 #Valid stage 
-                aspect_f1, Sentiment_f1 = self.evaluate()
+                toxic_f1  , constructive_f1= self.evaluate()
                 
-                print(f"Epoch {epoch} Validation accuracy (Aspect): ", aspect_f1)
-                print(f"Epoch {epoch} Validation accuracy (Sentiment): ", Sentiment_f1)
+                print(f"Epoch {epoch} Validation accuracy (Aspect): ",toxic_f1)
+                print(f"Epoch {epoch} Validation accuracy (Sentiment): ", constructive_f1)
 
-                combined_accuracy = (aspect_f1 + Sentiment_f1) / 2
+                combined_accuracy = (toxic_f1 + constructive_f1) / 2
                 if (self.args.wandb_api != ""):
                 
                     wandb.log({"Validation Accuracy": combined_accuracy})
@@ -478,16 +338,16 @@ class Solver():
         #Save the best model
         self.save_model(self.model, optim, self.args.epoch, step, self.model_dir)
 
-        aspect_precision, aspect_recall, aspect_f1,sentiment_precision,  sentiment_recall, sentiment_f1  = self.test()
+        aspect_precision, aspect_recall, aspect_f1, constructive_precision,  constructive_recall,  constructive_f1 = self.test()
        
         if (self.args.wandb_api != ""):
               
-                wandb.log({"Test aspect_precision": aspect_precision})
-                wandb.log({"Test aspect_recall":aspect_recall})
-                wandb.log({"Test aspect_f1": aspect_f1})
-                wandb.log({"Test sentiment_precision": sentiment_precision})
-                wandb.log({"Test sentiment_recall": sentiment_recall})
-                wandb.log({"Test sentiment_f1":  sentiment_f1})
+                wandb.log({"Test toxic_precision": aspect_precision})
+                wandb.log({"Test toxic_recall":aspect_recall})
+                wandb.log({"Test toxic_f1": aspect_f1})
+                wandb.log({"Test constructive_precision": constructive_precision})
+                wandb.log({"Test constructive_recall": constructive_recall})
+                wandb.log({"Test constructive_f1":  constructive_f1})
            
                     
                  

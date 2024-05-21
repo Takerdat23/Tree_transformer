@@ -39,97 +39,36 @@ def make_save_dir(save_dir):
         os.makedirs(save_dir)
     return save_dir
 
-#for aspect-based tasks
-
-def get_categories(df): 
-    aspect_categories = set()
-    for index , row in df.iterrows():
-    # Process aspect sentiments
-        aspect_sentiments = row['label'].split(';')
-        for aspect_sentiment in aspect_sentiments:
-            split = aspect_sentiment.strip('{}')
-            if(len(split.split('#'))< 2): 
-                continue
-            aspect, _ = split.split('#')
-            aspect_categories.add(aspect)
-
-    return list(aspect_categories)
 
 
 
-def process_student_feedback(df):
+
+def process_data(df):
    
     dataset = []
    
     for _, row in df.iterrows():
         data_dict = {}
  
-        data_dict["sentence"] = row['sentence']
+        data_dict["Comment"] = row['Comment']
         
-        # Convert sentiment and topic to one-hot encoded tensors
-        sentiment_idx =row['sentiment']
-        topic_idx =row['topic']
+        Constructiveness_idx =row['Constructiveness']
+        toxicity_idx =row['Toxicity']
         
-        sentiment_one_hot = torch.zeros(3)
-        sentiment_one_hot[sentiment_idx] = 1
+        Constructiveness_one_hot = torch.zeros(2)
+        Constructiveness_one_hot[Constructiveness_idx] = 1
         
-        topic_one_hot = torch.zeros(4)
-        topic_one_hot[topic_idx] = 1
+        toxicity_one_hot = torch.zeros(2)
+        toxicity_one_hot[toxicity_idx] = 1
         
      
         
-        data_dict["topic"] =  topic_one_hot
-        data_dict["sentiment"] =   sentiment_one_hot
+        data_dict["constructiveness"] = Constructiveness_one_hot
+        data_dict["toxicity"] = toxicity_one_hot
         dataset.append(data_dict)
 
     return dataset
 
-
-
-def process_data(df ,aspect_categories ): 
-
-    dataset = []
-   
-    for _ , row in df.iterrows():
-        data_dict = {}
- 
-        data_dict["comment"]= row['comment']
-        label_vectors = {}
-
-
-        aspect_sentiments = {}
-        if row['label'] == None: 
-            continue
-        else: 
-            for aspect_sentiment in row['label'].split(';'):
-                split = aspect_sentiment.strip('{}')
-                if(len(split.split('#'))< 2): 
-                    continue
-                aspect, sentiment = split.split('#')
-                aspect_sentiments[aspect] = sentiment
-
-   
-            for aspect in aspect_categories:
-                label_vector = [0, 0, 0, 0]  
-                sentiment = aspect_sentiments.get(aspect, None)
-              
-                if sentiment:
-                    if sentiment == 'Positive':
-                        label_vector[1] = 1
-                    elif sentiment == 'Negative':
-                        label_vector[2] = 1
-                    elif sentiment == 'Neutral':
-                        label_vector[3] = 1
-                else: 
-                    label_vector[0] = 1 #if the aspect not in the currunt comment
-                label_vectors[aspect] = label_vector
-
-        
-     
-            data_dict["label"]= torch.tensor([label_vectors[aspect] for aspect in aspect_categories])
-        dataset.append(data_dict)
-
-    return dataset
 
 
 def cc(arr, no_cuda=False):
@@ -169,13 +108,14 @@ def get_test(test_file):
     return txts
 
 
-class SentimentDataCollator:
+class DataCollator:
     def __init__(self, tokenizer):
         self.tokenizer = tokenizer
 
     def __call__(self, batch):
-        inputs = [example["comment"] for example in batch]
-        labels = [example["label"] for example in batch]
+        inputs = [example['Comment'] for example in batch]
+        constructive  = [example["constructiveness"] for example in batch]
+        toxic = [example["toxicity"] for example in batch]
 
 
         encoded_batch = [self.tokenizer.encode(sentence) for sentence in inputs]
@@ -193,15 +133,16 @@ class SentimentDataCollator:
         attention_mask = torch.tensor([encoded.attention_mask for encoded in encoded_batch])
 
  
-     
-        labels_tensor = torch.stack(labels)
+        constructive_tensor = torch.stack(constructive)
+        toxic_tensor = torch.stack(toxic)
+        
        
 
       
         return {"input_ids": input_ids,
                 "attention_mask": attention_mask,
-                "labels": labels_tensor}
-
+                "constructive": constructive_tensor, 
+               "toxicity": toxic_tensor }
 
 class data_utils():
     def __init__(self, args):
@@ -223,17 +164,17 @@ class data_utils():
             
             tokenizer = ByteLevelBPETokenizer()
 
-            tokenizer.train_from_iterator(df_train["comment"], vocab_size=30000, min_frequency=2,
+            tokenizer.train_from_iterator(df_train["Comment"], vocab_size=30000, min_frequency=2,
                               special_tokens=["[UNK]", "[CLS]", "[SEP]", "[PAD]", "[MASK]"])
             tokenizer.save_model(args.model_dir)
             self.tokenizer = ByteLevelBPETokenizer.from_file( os.path.join(args.model_dir,"vocab.json" ), os.path.join(args.model_dir,"merges.txt" ))
 
           
         
-        self.categories = get_categories(df_train)
-        dataset = process_data(df_train, self.categories)
-        val_dataset =  process_data(df_val, self.categories)
-        data_collator = SentimentDataCollator(self.tokenizer)
+    
+        dataset = process_data(df_train)
+        val_dataset =  process_data(df_val)
+        data_collator = DataCollator(self.tokenizer)
         self.train_loader = DataLoader(dataset, batch_size=args.batch_size, collate_fn=data_collator)
         self.val_loader =DataLoader(val_dataset, batch_size=args.batch_size, collate_fn=data_collator)
 
@@ -241,8 +182,8 @@ class data_utils():
         if args.test : 
 
             df_test = pd.read_csv(args.test_path,  encoding = 'utf8')
-            self.test_categories = get_categories(df_test)
-            test_dataset =  process_data(df_test, self.categories)
+     
+            test_dataset =  process_data(df_test)
             self.test_loader =DataLoader(test_dataset, batch_size=args.batch_size, collate_fn=data_collator)
       
 

@@ -1,14 +1,10 @@
 # Tree_transformer
 
-# Pretraining
-
-python main.py -train -seq_length 100 -batch_size 64 -model_dir ./Model2 -train_path ./data/demo-full.txt -num_step 60000
-
 # Choice
 tree base PretrainBERT PretrainBART PhoBert
 
 # Training 
-python main.py -train -strategy PretrainBART -seq_length 128 -batch_size 10 -model_dir ./Model/ABSA -train_path ./data/UIT-ViSFD/Train.csv -valid_path ./data/UIT-ViSFD/Dev.csv -epoch 5 -wandb_api [your wandb key]
+python main.py -train -strategy tree -seq_length 128 -batch_size 10 -model_dir ./Model/UIT-ViCTSD -train_path ./data/UIT-ViCTSD/Train.csv -valid_path ./data/UIT-ViCTSD/Dev.csv -test_path ./data/UIT-ViCTSD/Test.csv -epoch 5 -wandb_api [your wandb key]
 
 
 # Train tokenizer
