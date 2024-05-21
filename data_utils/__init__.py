@@ -22,6 +22,6 @@ def collate_fn(items: list) -> torch.Tensor:
 
     max_len = max([input_ids.shape[-1] for input_ids in batch_input_ids])
     batch_input_ids = pad_tensor(batch_input_ids, max_len)
-    batch_tags = pad_tensor(batch_tags)
+    batch_tags = pad_tensor(batch_tags, max_len)
 
     return batch_input_ids, batch_tags

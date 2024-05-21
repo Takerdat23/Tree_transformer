@@ -123,14 +123,14 @@ class Vocab(object):
 
         return sentences
 
-    def decode_tag(self, tag_vecs: torch.Tensor, mask: torch.Tensor) -> List[str]:
+    def decode_tag(self, tag_vecs: torch.Tensor) -> List[str]:
         '''
             tag_vecs: (bs, max_length)
         '''
         batch_tags = []
         for tag_vec in tag_vecs:
             tags = tag_vec.tolist()
-            tags = [self.i2tags[tag] for tag in tags]
+            tags = [self.i2tags[tag] for tag in tags if self.i2tags[tag] not in self.specials]
             batch_tags.append(tags)
 
         return batch_tags

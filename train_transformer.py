@@ -27,12 +27,11 @@ def train(model: nn.Module,
             input_ids = input_ids.to(device)
             tags = tags.to(device)
             logits = model(input_ids)
-            outputs = logits.argmax(dim=-1)
             # backward
             optimizer.zero_grad()
             total_tags = logits.shape[-1]
             loss = loss_fn(
-                outputs.reshape(-1, total_tags),
+                logits.reshape(-1, total_tags),
                 tags.reshape(-1))
             loss.backward()
             optimizer.step()
@@ -46,6 +45,7 @@ def train(model: nn.Module,
 def validate(model: nn.Module, 
              dataloader: DataLoader, 
              epoch: int,
+             vocab: Vocab,
              device: str):
     model.eval()
     f1_scorer = F1()
@@ -56,6 +56,8 @@ def validate(model: nn.Module,
             tags = tags.to(device)
             logits = model(input_ids)
             outputs = logits.argmax(dim=-1)
+            tags = vocab.decode_tag(tags)[0]
+            outputs = vocab.decode_tag(outputs)[0]
             score = f1_scorer.compute_score(tags, outputs)
             scores.append(score)
 
@@ -168,7 +170,7 @@ def start(args):
         d_ff=args.d_ff,
         vocab=vocab
     ).to(args.device)
-    loss_fn = nn.CrossEntropyLoss(ignore_index=vocab.padding_idx).to(args.device)
+    loss_fn = nn.CrossEntropyLoss(ignore_index=0).to(args.device)
     optimizer = Adam(model.parameters(), lr=args.lr)
 
     best_f1 = 0
@@ -176,7 +178,7 @@ def start(args):
     epoch = 1
     while True:
         train(model, loss_fn, optimizer, train_dataloader, epoch, args.device)
-        f1_score = validate(model, dev_dataloader, epoch, args.device)
+        f1_score = validate(model, dev_dataloader, epoch, vocab, args.device)
         if f1_score > best_f1:
             best_f1 = f1_score
             save_checkpoint(model, 
