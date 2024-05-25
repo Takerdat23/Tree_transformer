@@ -52,7 +52,7 @@ class MultiHeadedAttention(nn.Module):
         self.dropout = nn.Dropout(p=dropout)
         self.no_cuda = no_cuda
         
-    def forward(self, query, key, value, group_prob=None, mask=None):
+    def forward(self, query, key, value, group_prob=None, mask=None, return_score = False):
         if mask is not None:
             # Same mask applied to all h heads.
             mask = mask.unsqueeze(1)
@@ -71,6 +71,8 @@ class MultiHeadedAttention(nn.Module):
         # 3) "Concat" using a view and apply a final linear. 
         x = x.transpose(1, 2).contiguous() \
              .view(nbatches, -1, self.h * self.d_k)
+        
+ 
         return self.linears[-1](x)
 
 
@@ -117,7 +119,7 @@ class GroupAttention(nn.Module):
         scores = scores.masked_fill(mask == 0, -1e9)
         neibor_attn = F.softmax(scores, dim=-1)
         neibor_attn = torch.sqrt(neibor_attn*neibor_attn.transpose(-2,-1) + 1e-9)
-        neibor_attn = prior + (1. - prior)*neibor_attn
+        # neibor_attn = prior + (1. - prior)*neibor_attn
 
         t = torch.log(neibor_attn + 1e-9).masked_fill(a==0, 0).matmul(tri_matrix)
         g_attn = tri_matrix.matmul(t).exp().masked_fill((tri_matrix.int()-b)==0, 0)     
