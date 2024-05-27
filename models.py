@@ -403,6 +403,12 @@ class Tree_transfomer(nn.Module):
             
                 toxic, construct = self.outputHead.forward(hiddenStates)
                 return toxic, construct, break_Probs
+            else: 
+                _, hiddenStates , _ = self.encoder.forward(inputs, mask)
+            
+                toxic, construct = self.outputHead.forward(hiddenStates)
+                return toxic, construct
+
     
        
        
