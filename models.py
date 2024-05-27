@@ -465,6 +465,12 @@ class Tree_transfomer(nn.Module):
             
                 output = self.outputHead.forward(hiddenStates)
                 return output, break_Probs
+            else: 
+                _, hiddenStates , _ = self.encoder.forward(inputs, mask)
+            
+                output = self.outputHead.forward(hiddenStates)
+                return output
+
     
 
 #Base transformer
