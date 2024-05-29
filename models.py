@@ -125,8 +125,8 @@ class Encoder(nn.Module):
         super(Encoder, self).__init__()
         self.word_embed = word_embed
         self.layers = clones(layer, N)
-        self.intermidiate = IntermidiateOutput( d_model, vocab_size)
-        self.output = EncoderOutputLayer(dropout, d_model, d_model)
+        self.intermidiate = IntermidiateOutput( d_model, d_model*4)
+        self.output = EncoderOutputLayer(dropout, d_model* 4, d_model)
         
         
 
@@ -142,7 +142,7 @@ class Encoder(nn.Module):
             break_probs.append(break_prob)
 
        
-        x= self.intermidiate(x)
+        # x= self.intermidiate(x)
        
         break_probs = torch.stack(break_probs, dim=1)
         return x, hidden_states, break_probs
@@ -375,37 +375,129 @@ class Constituent_Pretrained_BART(nn.Module):
         return output
 
 
+class BaseEncoderLayer_ForConsti(nn.Module):
+    "Encoder is made up of self-attn and feed forward (defined below)"
+    def __init__(self, size, self_attn, feed_forward, vocab_size ,  dropout):
+        super(BaseEncoderLayer_ForConsti, self).__init__()
+        self.self_attn = self_attn
+        self.feed_forward = feed_forward
+        self.sublayer = clones(SublayerConnection(size, dropout), 2)
+        
+        self.size = size
+        # self.selfoutput = SelfOutputLayer(dropout, size, size )
+        
 
+    def forward(self, x, mask):
+  
     
+        atten = self.sublayer[0](x, lambda x: self.self_attn(x, x, x,  mask= mask))
+ 
+        x = self.sublayer[1](atten, self.feed_forward)
+
+     
+        return x , atten
+      
+
+
+
+
+class BaseEncoder_ForConsti(nn.Module):
+    def __init__(self, layer, N, d_model, vocab_size, dropout):
+        super(BaseEncoder_ForConsti, self).__init__()
+  
+        self.layers = clones(layer, N)
+        self.intermidiate = IntermidiateOutput( d_model, d_model*4 )
+        self.output = EncoderOutputLayer(dropout, d_model*4, d_model)
+
+    def forward(self, inputs, mask):
+    
+        hidden_states =[]
+        attention_score = []
+        x = inputs
+
+        for layer in self.layers:
+      
+            x, atten = layer(x, mask)
+            hidden_states.append(x)
+            attention_score.append(atten)
+    
+        
+        x= self.intermidiate(x)
+        x= self.output(x)
+
+      
+        
+
+        return x, hidden_states, attention_score
+    
+    
+  
 class ABSA_Tree_transfomer(nn.Module): 
-    def __init__(self, vocab_size, N=12, d_model=768, d_ff=2048, h=12, dropout=0.1, num_categories= 10, no_cuda= False):
+    def __init__(self, vocab_size, N=12, No_consti = 1, d_model=768, d_ff=2048, h=12, dropout=0.1,  num_categories= 10,  no_cuda= False):
         super(ABSA_Tree_transfomer, self).__init__()
         "Helper: Construct a model from hyperparameters."
         self.no_cuda=  no_cuda
+        self.Constituent = No_consti
         self.c = copy.deepcopy
-        self.attn = MultiHeadedAttention(h, d_model, no_cuda=self.no_cuda)
-        self.group_attn = GroupAttention(d_model, no_cuda=self.no_cuda)
-        self.ff = PositionwiseFeedForward(d_model, d_ff, dropout)
+        attn = MultiHeadedAttention(h, d_model, no_cuda=self.no_cuda)
+        group_attn = GroupAttention(d_model, no_cuda=self.no_cuda)
+        ff = PositionwiseFeedForward(d_model, d_ff, dropout)
         self.position = PositionalEncoding(d_model, 128)
         self.word_embed = nn.Sequential(Embeddings(d_model, vocab_size), self.c(self.position))
-        self.encoder = Encoder(EncoderLayer(d_model, self.c(self.attn), self.c(self.ff), vocab_size, self.group_attn, dropout), 
-                    N, d_model, vocab_size, self.c(self.word_embed),  dropout)
+
+        if self.Constituent != 0: 
+
+
+            self.Consti_encoder = Encoder(EncoderLayer(d_model, self.c(attn), self.c(ff), vocab_size, group_attn, dropout), 
+                        No_consti, d_model, vocab_size, self.c(self.word_embed),  dropout)
+            
+            Layers = N - No_consti
+
+            self.encoder = BaseEncoder_ForConsti(BaseEncoderLayer_ForConsti(d_model, self.c(attn), self.c(ff), vocab_size, dropout), 
+                        Layers, d_model, vocab_size, dropout)
+        else: 
+            self.encoder = Encoder(EncoderLayer(d_model, self.c(attn), self.c(ff), vocab_size, group_attn, dropout), 
+                        N, d_model, vocab_size, self.c(self.word_embed),  dropout)
         self.outputHead = Aspect_Based_SA_Output(dropout , d_model, 4, num_categories ) # 4 class label
 
         
         
 
-    def forward(self, inputs, mask, categories, reutrn_score= False):
-        if reutrn_score: 
-            _, hiddenStates ,break_probs= self.encoder.forward(inputs, mask)
-            output = self.outputHead.forward(hiddenStates, categories )
-            return output, break_probs
-        else: 
+    def forward(self, inputs, mask, categories,  reutrn_score= False):
+        if self.Constituent != 0: 
+            if reutrn_score: 
+                x, Consti_hidden_states, Consti_scores  = self.Consti_encoder.forward(inputs, mask)
+            
+                x, hiddenStates, enc_score= self.encoder.forward(x, mask)
 
-            _, hiddenStates ,_= self.encoder.forward(inputs, mask)
+                final_hiddenstates  = Consti_hidden_states + hiddenStates
+
+                attention_score = Consti_scores + enc_score
+
+                output = self.outputHead.forward(hiddenStates, categories )
+                return output , attention_score
+            else: 
+                x, Consti_hidden_states, _ = self.Consti_encoder.forward(inputs, mask)
+            
+                x, hiddenStates, _= self.encoder.forward(x, mask)
+
+                final_hiddenstates  = Consti_hidden_states + hiddenStates
+
         
-            output = self.outputHead.forward(hiddenStates, categories )
-            return output
+
+                output = self.outputHead.forward(final_hiddenstates, categories )
+                return output
+        else:
+            if reutrn_score: 
+                _, hiddenStates ,break_probs= self.encoder.forward(inputs, mask)
+                output = self.outputHead.forward(hiddenStates, categories )
+                return output, break_probs
+            else: 
+
+                _, hiddenStates ,_= self.encoder.forward(inputs, mask)
+            
+                output = self.outputHead.forward(hiddenStates, categories )
+                return output
 
 
 #Base transformer
@@ -469,6 +561,9 @@ class BaseEncoder(nn.Module):
 
     def next_sentence_loss(self):
         pass
+
+
+
 
 
 class ABSA_transfomer(nn.Module): 
