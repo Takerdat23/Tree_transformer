@@ -32,7 +32,7 @@ class NLI_Output(nn.Module):
          Output: sentiment output 
         """
 
-        x = encoder_output[: , 0 , :]
+        x = encoder_output
       
         x= self.norm(x)
         x = self.dropout(x)
@@ -288,7 +288,7 @@ class LSTM_Attention(nn.Module):
 
 
         context_vectors = []
-        for h_state in hidden_states:
+        for h_state in hidden:
             context_vector, _ = self.attention(h_state)
             context_vectors.append(context_vector)
 
