@@ -316,6 +316,7 @@ class Solver():
         try:
         
             for epoch in tqdm(range(self.args.epoch)):
+                self.model.train()
                 epoch_progress = tqdm(total=len(self.data_util.train_loader), desc=f'Epoch {epoch+1}/{self.args.epoch}', position=0)
 
                 for step, batch in enumerate(self.data_util.train_loader):
@@ -367,7 +368,7 @@ class Solver():
                 #Valid stage 
                 aspect_precision, aspect_recall, topic_f1, sentiment_precision, sentiment_recall, sentiment_f1 = self.evaluate()
 
-                self.model.train()
+                
                 
                 print(f"Epoch {epoch} Validation accuracy (Aspect): ", aspect_precision)
                 print(f"Epoch {epoch} Validation accuracy (Sentiment): ", sentiment_precision)
