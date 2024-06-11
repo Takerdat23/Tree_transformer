@@ -216,7 +216,7 @@ class Solver():
         start = time.time()
      
 
-        self.model.train()
+        
         total_loss = []
         start = time.time()
 
@@ -228,7 +228,9 @@ class Solver():
         try:
         
             for epoch in tqdm(range(self.args.epoch)):
+                self.model.train()
                 epoch_progress = tqdm(total=len(self.data_util.train_loader), desc=f'Epoch {epoch+1}/{self.args.epoch}', position=0)
+
 
                 for step, batch in enumerate(self.data_util.train_loader):
                     inputs = batch['input_ids'].to(device)
