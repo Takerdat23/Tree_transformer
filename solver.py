@@ -49,6 +49,11 @@ class Solver():
 
             self.model = ABSA_transfomer( vocab_size= self.vocab_size, N = modelConfig['N_layer'], d_model= modelConfig['d_model'], 
                                           d_ff= modelConfig['d_ff'], h= modelConfig['heads'] ,  dropout = modelConfig['dropout'], no_cuda=args.no_cuda)
+        elif args.strategy == 'lstm' : 
+
+            self.model = LSTM_Attention( vocab_size= self.vocab_size, input_size = modelConfig['d_model'], hidden_size= modelConfig['d_model'], 
+                                          num_layers= modelConfig['N_layer'], bidirectional= False ,  dropout = modelConfig['dropout'], no_cuda=args.no_cuda)
+
         elif args.strategy == 'PretrainBERT' : 
 
             self.model = Constituent_Pretrained_transformer(  vocab_size= self.vocab_size, model = self.args.model_name, M = modelConfig['M_Constituent'] , d_model= modelConfig['d_model'], 
@@ -361,6 +366,8 @@ class Solver():
                 epoch_progress.close()
                 #Valid stage 
                 aspect_precision, aspect_recall, topic_f1, sentiment_precision, sentiment_recall, sentiment_f1 = self.evaluate()
+
+                self.model.train()
                 
                 print(f"Epoch {epoch} Validation accuracy (Aspect): ", aspect_precision)
                 print(f"Epoch {epoch} Validation accuracy (Sentiment): ", sentiment_precision)
