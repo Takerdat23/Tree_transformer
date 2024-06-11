@@ -47,6 +47,11 @@ class Solver():
 
             self.model = Transfomer( vocab_size= self.vocab_size, N = modelConfig['N_layer'], d_model= modelConfig['d_model'], 
                                           d_ff= modelConfig['d_ff'], h= modelConfig['heads'] ,  dropout = modelConfig['dropout'], no_cuda=args.no_cuda)
+        elif args.strategy == 'lstm' : 
+
+            self.model = LSTM_Attention( vocab_size= self.vocab_size, input_size = modelConfig['d_model'], hidden_size= modelConfig['d_model'], 
+                                          num_layers= modelConfig['N_layer'], bidirectional= False ,  dropout = modelConfig['dropout'], no_cuda=args.no_cuda)
+
         elif args.strategy == 'PretrainBERT' : 
 
             self.model = Constituent_Pretrained_transformer(  vocab_size= self.vocab_size, model = self.args.model_name, M = modelConfig['M_Constituent'] , d_model= modelConfig['d_model'], 
@@ -247,7 +252,7 @@ class Solver():
         loss_fn = torch.nn.CrossEntropyLoss()
      
 
-        self.model.train()
+        
         total_loss = 0.0
         start = time.time()
 
@@ -258,6 +263,7 @@ class Solver():
         try:
             
             for epoch in tqdm(range(self.args.epoch)):
+                self.model.train()
                 epoch_progress = tqdm(total=len(self.data_util.train_loader), desc=f'Epoch {epoch+1}/{self.args.epoch}', position=0)
 
                 for step, batch in enumerate(self.data_util.train_loader):
@@ -269,7 +275,7 @@ class Solver():
                     optim.zero_grad()
                     toxic, construct = self.model.forward(inputs, mask)  
 
-              
+                    
 
                     toxic_loss = loss_fn(toxic, toxic_labels)
 
