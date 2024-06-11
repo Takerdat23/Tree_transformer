@@ -102,7 +102,7 @@ class Solver():
             device = "cpu"
 
         self.model.to(device)
-        self.model.eval()
+        # self.model.eval()
 
         all_topic_predictions = []
         all_sentiment_predictions = []
@@ -316,7 +316,7 @@ class Solver():
         try:
         
             for epoch in tqdm(range(self.args.epoch)):
-                self.model.train()
+            
                 epoch_progress = tqdm(total=len(self.data_util.train_loader), desc=f'Epoch {epoch+1}/{self.args.epoch}', position=0)
 
                 for step, batch in enumerate(self.data_util.train_loader):
