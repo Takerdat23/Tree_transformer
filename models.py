@@ -29,7 +29,7 @@ class VSMEC_Output(nn.Module):
         """
 
       
-        x = encoder_output[: , 0 , :]
+        x = encoder_output[-1]
       
         x= self.norm(x)
         x = self.dropout(x)
@@ -380,4 +380,24 @@ class Transfomer(nn.Module):
         x, _= self.encoder.forward(inputs, mask)
       
         output = self.outputHead.forward(x)
+        return output
+
+
+
+class LSTM_Attention(nn.Module):
+    def __init__(self, vocab_size ,  input_size = 256, hidden_size= 256, num_layers=6, bidirectional=False, dropout = 0.1, no_cuda = False):
+        super(LSTM_Attention, self).__init__()
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
+        self.bidirectional = bidirectional
+        self.embedding = nn.Embedding(vocab_size, input_size )
+        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, bidirectional=bidirectional)
+       
+        self.outputHead = VSMEC_Output(dropout , hidden_size, 7)
+
+    def forward(self, x, mask):
+        # x: [batch_size, seq_len]
+        embedded_seq = self.embedding(x)  # embedded_seq: [batch_size, seq_len, embedding_dim]
+        lstm_out, (hidden, cell) = self.lstm(embedded_seq )  
+        output = self.outputHead.forward( hidden)
         return output

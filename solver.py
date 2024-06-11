@@ -47,6 +47,10 @@ class Solver():
 
             self.model = Transfomer( vocab_size= self.vocab_size, N = modelConfig['N_layer'], d_model= modelConfig['d_model'], 
                                           d_ff= modelConfig['d_ff'], h= modelConfig['heads'] ,  dropout = modelConfig['dropout'], no_cuda=args.no_cuda)
+        elif args.strategy == 'lstm' : 
+
+            self.model = LSTM_Attention( vocab_size= self.vocab_size, input_size = modelConfig['d_model'], hidden_size= modelConfig['d_model'], 
+                                          num_layers= modelConfig['N_layer'], bidirectional= False ,  dropout = modelConfig['dropout'], no_cuda=args.no_cuda)
         
         
        
