@@ -24,7 +24,7 @@ class SpansDetectOutput(nn.Module):
         last_hidden_state = self.dropout(last_hidden_state)
         span_logits = self.span_classifier(last_hidden_state)
 
-        print("span_logits", span_logits.shape)
+   
 
         span_logits = span_logits.permute(0, 2, 1)
         span_logits = torch.sigmoid(span_logits)
