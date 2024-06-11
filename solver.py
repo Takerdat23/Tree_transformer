@@ -47,6 +47,11 @@ class Solver():
 
             self.model = ABSA_transfomer( vocab_size= self.vocab_size, N = modelConfig['N_layer'], d_model= modelConfig['d_model'], 
                                           d_ff= modelConfig['d_ff'], h= modelConfig['heads'] ,  dropout = modelConfig['dropout'], no_cuda=args.no_cuda)
+        elif args.strategy == 'lstm' : 
+
+            self.model = LSTM_Attention( vocab_size= self.vocab_size, input_size = modelConfig['d_model'], hidden_size= modelConfig['d_model'], 
+                                          num_layers= modelConfig['N_layer'], bidirectional= False ,  num_categories = 10,  dropout = modelConfig['dropout'], no_cuda=args.no_cuda)
+
         elif args.strategy == 'PretrainBERT' : 
 
             self.model = Constituent_Pretrained_transformer(  vocab_size= self.vocab_size, model = self.args.model_name, M = modelConfig['M_Constituent'] , d_model= modelConfig['d_model'], 
