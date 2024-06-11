@@ -448,6 +448,8 @@ class Solver():
                 epoch_progress.close()
                 #Valid stage 
                 aspect_f1, Sentiment_f1 = self.evaluate()
+
+                self.model.train()
                 
                 print(f"Epoch {epoch} Validation accuracy (Aspect): ", aspect_f1)
                 print(f"Epoch {epoch} Validation accuracy (Sentiment): ", Sentiment_f1)
