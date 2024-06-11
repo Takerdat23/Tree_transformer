@@ -33,7 +33,7 @@ class Topic_SA_Output(nn.Module):
          categories: aspect, categories  
          Output: sentiment output 
         """
-        pooled_output = model_output[-1][: , 0 , :]
+        pooled_output = model_output[-1]
 
         topic = self.Topicdense(pooled_output )
 
@@ -513,12 +513,8 @@ class LSTM_Attention(nn.Module):
         lstm_out, (hidden, cell) = self.lstm(embedded_seq)  # lstm_out: [batch_size, seq_len, hidden_size*num_directions]
 
 
-
-        hidden_states = [hidden[layer].unsqueeze(1).expand(-1, embedded_seq.size(1), -1) for layer in range(self.num_layers)]
-
-
         context_vectors = []
-        for h_state in hidden_states:
+        for h_state in hidden:
             context_vector, _ = self.attention(h_state)
             context_vectors.append(context_vector)
 
