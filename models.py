@@ -19,9 +19,12 @@ class SpansDetectOutput(nn.Module):
 
     def forward(self, encoder_output ):
      
-        last_hidden_state = encoder_output
+        last_hidden_state = encoder_output[-1]
+        
         last_hidden_state = self.dropout(last_hidden_state)
         span_logits = self.span_classifier(last_hidden_state)
+
+        print("span_logits", span_logits.shape)
 
         span_logits = span_logits.permute(0, 2, 1)
         span_logits = torch.sigmoid(span_logits)
@@ -326,3 +329,22 @@ class Transfomer(nn.Module):
         return output
     
 
+class LSTM_Attention(nn.Module):
+    def __init__(self, vocab_size ,  input_size = 256, hidden_size= 256, num_layers=6, bidirectional=False, dropout = 0.1, no_cuda = False):
+        super(LSTM_Attention, self).__init__()
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
+        self.bidirectional = bidirectional
+        self.embedding = nn.Embedding(vocab_size, input_size )
+        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, bidirectional=bidirectional)
+       
+        self.outputHead = SpansDetectOutput(dropout , hidden_size)
+
+    def forward(self, x, mask):
+        # x: [batch_size, seq_len]
+        embedded_seq = self.embedding(x)  # embedded_seq: [batch_size, seq_len, embedding_dim]
+        lstm_out, (hidden, cell) = self.lstm(embedded_seq )  
+        hidden_states = [hidden[layer].unsqueeze(1).expand(-1, embedded_seq.size(1), -1) for layer in range(self.num_layers)]
+        
+        output = self.outputHead.forward(hidden_states)
+        return output
