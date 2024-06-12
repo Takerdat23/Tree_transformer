@@ -256,6 +256,7 @@ class Solver():
                     loss = F.binary_cross_entropy(output, labels)
                     
                     # loss = self.model.masked_lm_loss(output, labels)
+                    optim.zero_grad()
                     total_loss.append(loss.item())
 
                     # Backpropagation
