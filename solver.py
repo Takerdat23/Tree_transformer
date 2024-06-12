@@ -233,7 +233,7 @@ class Solver():
                     if (input_ids.shape[0] < 32): 
                         continue
 
-                    optim.zero_grad()
+                    
                     span_logits = self.model(input_ids, attention_mask)
                     loss_span = criterion_span(span_logits.squeeze(), spans)
 
@@ -241,7 +241,7 @@ class Solver():
                 
 
             
-            
+                    optim.zero_grad()
                     total_loss.append(loss.item())
 
 
