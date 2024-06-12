@@ -13,6 +13,10 @@ lstm
 python main.py -train -strategy lstm -seq_length 256 -batch_size 10 -model_dir ./Model/VNLI -train_path ./data/VNLI/Train.jsonl -valid_path ./data/VNLI/Dev.jsonl -epoch 5 -wandb_api [your wandb key]
 
 
+xlstm
+
+python main.py -train -strategy xlstm -seq_length 256 -batch_size 10 -model_dir ./Model/VNLI -train_path ./data/VNLI/Train.jsonl -valid_path ./data/VNLI/Dev.jsonl -epoch 5 -wandb_api [your wandb key]
+
 # Train tokenizer
 python test.py -train_path ./data/train.txt -model_dir ./Model
 
