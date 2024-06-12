@@ -9,6 +9,18 @@ from modules import *
 from transformers import BertModel, BertConfig, AutoTokenizer, AutoModelForSeq2SeqLM, AutoModel
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 
+from omegaconf import OmegaConf
+from pprint import pprint
+from dacite import from_dict
+from dacite import Config as DaciteConfig
+from LSTM_model.blocks.slstm.cell import sLSTMCell, sLSTMCellConfig
+from LSTM_model.blocks.mlstm.block import mLSTMBlockConfig, mLSTMBlock
+from LSTM_model.blocks.mlstm.layer import mLSTMLayerConfig, mLSTMLayer
+from LSTM_model.blocks.slstm.block import sLSTMBlock, sLSTMBlockConfig
+from LSTM_model.blocks.slstm.layer import sLSTMLayer, sLSTMLayerConfig
+from LSTM_model.components.feedforward import FeedForwardConfig
+from LSTM_model.xlstm_block_stack import xLSTMBlockStackConfig, xLSTMBlockStack
+
 
 
 
@@ -595,3 +607,32 @@ class LSTM_Attention(nn.Module):
         lstm_out, (hidden, cell) = self.lstm(embedded_seq )  
         toxic, construct = self.outputHead.forward(hidden)
         return toxic, construct
+
+
+class XLSTM(nn.Module):
+    def __init__(self, vocab_size , config_path , dropout = 0.1, no_cuda = False):
+        super(XLSTM, self).__init__()
+        import yaml
+        if config_path !=  "./Experiment.yaml": 
+            xlstm_cfg = config_path
+        else: 
+            with open("./Experiment.yaml") as file:
+                xlstm_cfg = yaml.full_load(file)
+        
+        cfg = OmegaConf.create(xlstm_cfg)
+        cfg = from_dict(data_class=xLSTMBlockStackConfig, data=OmegaConf.to_container(cfg), config=DaciteConfig(strict=True))
+
+        self.embedding = nn.Embedding(vocab_size, cfg.embedding_dim )
+        
+        self.xlstm = xLSTMBlockStack(cfg)
+       
+        self.outputHead = VICTSD_Output(dropout , cfg.embedding_dim, 2, 2)
+
+    def forward(self, x, mask):
+        # x: [batch_size, seq_len]
+        embedded_seq = self.embedding(x)  # embedded_seq: [batch_size, seq_len, embedding_dim]
+ 
+        y, states= self.xlstm(embedded_seq , return_last_hidden = True)  
+      
+        output = self.outputHead.forward(states[0])
+        return output
