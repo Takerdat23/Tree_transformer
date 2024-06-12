@@ -12,7 +12,7 @@ from bert_optimizer import BertAdam
 from torch.utils.data import DataLoader
 from sklearn.metrics import f1_score
 import wandb
-
+from sklearn.metrics import classification_report
 class Solver():
     def __init__(self, args):
         self.args = args
@@ -333,7 +333,7 @@ class Solver():
 
                     if (inputs.shape[0] < 32): 
                         continue
-                    optim.zero_grad()
+                    
                     topic_output, sentiment_output = self.model(inputs, mask)
 
                 
@@ -354,7 +354,9 @@ class Solver():
                     loss = topic_loss + sentiment_loss
                     
                     # loss = self.model.masked_lm_loss(output, labels)
+                    optim.zero_grad()
                     total_loss.append(loss.item())
+
 
                     # Backpropagation
                     loss.backward()
