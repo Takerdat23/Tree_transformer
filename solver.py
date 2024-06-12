@@ -333,7 +333,7 @@ class Solver():
 
                     if (inputs.shape[0] < 32): 
                         continue
-
+                    optim.zero_grad()
                     topic_output, sentiment_output = self.model(inputs, mask)
 
                 
