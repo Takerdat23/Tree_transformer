@@ -113,14 +113,23 @@ class xLSTMBlockStack(nn.Module):
         if not isinstance(self.post_blocks_norm, nn.Identity):
             self.post_blocks_norm.reset_parameters()
 
-    def forward(self, x: torch.Tensor, **kwargs) -> torch.Tensor:
-
+    def forward(self, x: torch.Tensor, return_last_hidden = False,  **kwargs) -> torch.Tensor:
+        states = []
         for block in self.blocks:
+            if isinstance(block, sLSTMBlock) and return_last_hidden:
+                x, state = block(x, return_last_state = return_last_hidden,  **kwargs)
+                states.append(state)
+        
             x = block(x, **kwargs)
 
         x = self.post_blocks_norm(x)
 
-        return x
+        if return_last_hidden: 
+            return x, states
+        else: 
+            return x
+
+    
 
     def step(
         self, x: torch.Tensor, state: dict[str, dict[str, tuple[torch.Tensor, ...]]] = None

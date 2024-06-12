@@ -73,10 +73,18 @@ class xLSTMBlock(nn.Module):
         self.reset_parameters()
 
     def forward(self, x: torch.Tensor, **kwargs) -> torch.Tensor:
-        x = x + self.xlstm(self.xlstm_norm(x), **kwargs)
-        if self.ffn is not None:
-            x = x + self.ffn(self.ffn_norm(x), **kwargs)
-        return x
+        states = self.xlstm(self.xlstm_norm(x), **kwargs)
+        if len(list(states)) == 2: 
+            out, hidden = states
+            x = x + out
+            if self.ffn is not None:
+                x = x + self.ffn(self.ffn_norm(x), **kwargs)
+            return x, hidden
+        else:
+            x = x + self.xlstm(self.xlstm_norm(x), **kwargs)
+            if self.ffn is not None:
+                x = x + self.ffn(self.ffn_norm(x), **kwargs)
+            return x
 
     def step(self, x: torch.Tensor, **kwargs) -> tuple[torch.Tensor, dict[str, tuple[torch.Tensor, ...]]]:
         x_xlstm, xlstm_state = self.xlstm.step(self.xlstm_norm(x), **kwargs)
