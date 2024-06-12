@@ -53,6 +53,10 @@ class Solver():
 
             self.model = LSTM_Attention( vocab_size= self.vocab_size, input_size = modelConfig['d_model'], hidden_size= modelConfig['d_model'], 
                                           num_layers= modelConfig['N_layer'], bidirectional= False ,  dropout = modelConfig['dropout'], no_cuda=args.no_cuda)
+        elif args.strategy == 'xlstm' : 
+
+            self.model = XLSTM( vocab_size= self.vocab_size , config_path = "./Experiment.yaml", dropout = 0.1, no_cuda=args.no_cuda)
+            
 
         elif args.strategy == 'PretrainBERT' : 
 

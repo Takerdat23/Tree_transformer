@@ -10,7 +10,7 @@ python main.py -train -strategy tree -seq_length 128 -batch_size 10 -model_dir .
 
 lstm
 
-python main.py -train -strategy lstm -seq_length 128 -batch_size 10 -model_dir ./Model/ABSA -train_path ./data/UIT-VSF/Train.csv -valid_path ./data/UIT-VSF/Dev.csv  -epoch 5 -wandb_api [your wandb key]
+python main.py -train -strategy xlstm -seq_length 128 -batch_size 10 -model_dir ./Model/ABSA -train_path ./data/UIT-VSF/Train.csv -valid_path ./data/UIT-VSF/Dev.csv  -epoch 5 -wandb_api [your wandb key]
 
 
 # Train tokenizer
