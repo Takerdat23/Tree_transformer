@@ -277,8 +277,8 @@ class Solver():
                     construct_labels = batch['constructive'].to(device)
                     
 
-                    # if (inputs.shape[0] < 32): 
-                    #     continue
+                    if (inputs.shape[0] < 32): 
+                        continue
                     optim.zero_grad()
                     toxic, construct = self.model.forward(inputs, mask)  
 
