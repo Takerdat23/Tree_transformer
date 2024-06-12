@@ -121,6 +121,8 @@ class Solver():
                 mask = batch['attention_mask'].to(device)
                 topics  = batch['topic'].to(device)
                 sentiments = batch['sentiment'].to(device)
+                if (inputs.shape[0] < 32): 
+                      continue
 
       
                 topic_output, sentiment_output = self.model(inputs, mask)
