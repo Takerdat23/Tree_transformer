@@ -51,6 +51,10 @@ class Solver():
 
             self.model = LSTM_Attention( vocab_size= self.vocab_size, input_size = modelConfig['d_model'], hidden_size= modelConfig['d_model'], 
                                           num_layers= modelConfig['N_layer'], bidirectional= False ,  dropout = modelConfig['dropout'], no_cuda=args.no_cuda)
+
+        elif args.strategy == 'xlstm' : 
+
+            self.model = XLSTM( vocab_size= self.vocab_size , config_path = "./Experiment.yaml", dropout = 0.1, no_cuda=args.no_cuda)
      
         
        
@@ -225,6 +229,9 @@ class Solver():
                     input_ids = batch['input_ids'].squeeze(1).to(device)
                     attention_mask = batch['attention_mask'].to(device)
                     spans = batch['spans'].float().to(device)
+
+                    if (input_ids.shape[0] < 32): 
+                        continue
 
                     optim.zero_grad()
                     span_logits = self.model(input_ids, attention_mask)

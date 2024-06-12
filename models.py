@@ -8,6 +8,18 @@ from torch.nn import GELU
 from modules import *
 from transformers import BertModel, BertConfig
 
+from omegaconf import OmegaConf
+from pprint import pprint
+from dacite import from_dict
+from dacite import Config as DaciteConfig
+from LSTM_model.blocks.slstm.cell import sLSTMCell, sLSTMCellConfig
+from LSTM_model.blocks.mlstm.block import mLSTMBlockConfig, mLSTMBlock
+from LSTM_model.blocks.mlstm.layer import mLSTMLayerConfig, mLSTMLayer
+from LSTM_model.blocks.slstm.block import sLSTMBlock, sLSTMBlockConfig
+from LSTM_model.blocks.slstm.layer import sLSTMLayer, sLSTMLayerConfig
+from LSTM_model.components.feedforward import FeedForwardConfig
+from LSTM_model.xlstm_block_stack import xLSTMBlockStackConfig, xLSTMBlockStack
+
     
 
 class SpansDetectOutput(nn.Module):
@@ -347,4 +359,33 @@ class LSTM_Attention(nn.Module):
         hidden_states = [hidden[layer].unsqueeze(1).expand(-1, embedded_seq.size(1), -1) for layer in range(self.num_layers)]
         
         output = self.outputHead.forward(hidden_states)
+        return output
+
+
+class XLSTM(nn.Module):
+    def __init__(self, vocab_size , config_path , dropout = 0.1, no_cuda = False):
+        super(XLSTM, self).__init__()
+        import yaml
+        if config_path !=  "./Experiment.yaml": 
+            xlstm_cfg = config_path
+        else: 
+            with open("./Experiment.yaml") as file:
+                xlstm_cfg = yaml.full_load(file)
+        
+        cfg = OmegaConf.create(xlstm_cfg)
+        cfg = from_dict(data_class=xLSTMBlockStackConfig, data=OmegaConf.to_container(cfg), config=DaciteConfig(strict=True))
+
+        self.embedding = nn.Embedding(vocab_size, cfg.embedding_dim )
+        
+        self.xlstm = xLSTMBlockStack(cfg)
+       
+        self.outputHead = SpansDetectOutput(dropout , cfg.embedding_dim)
+
+    def forward(self, x, mask):
+        # x: [batch_size, seq_len]
+        embedded_seq = self.embedding(x)  # embedded_seq: [batch_size, seq_len, embedding_dim]
+ 
+        y, states= self.xlstm(embedded_seq , return_last_hidden = True)  
+      
+        output = self.outputHead.forward([y])
         return output
