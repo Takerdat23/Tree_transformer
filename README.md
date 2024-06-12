@@ -12,6 +12,12 @@ lstm
 python main.py -train -strategy lstm -seq_length 128 -batch_size 10 -model_dir ./Model/ViHOS -train_path ./data/ViHOS/train.csv -valid_path ./data/ViHOS/dev.csv -epoch 5 -wandb_api [your wandb key]
 
 
+
+xlstm
+
+python main.py -train -strategy xlstm -seq_length 128 -batch_size 10 -model_dir ./Model/ViHOS -train_path ./data/ViHOS/train.csv -valid_path ./data/ViHOS/dev.csv -epoch 5 -wandb_api [your wandb key]
+
+
 # Train tokenizer
 python test.py -train_path ./data/train.txt -model_dir ./Model
 
