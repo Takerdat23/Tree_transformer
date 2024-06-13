@@ -273,25 +273,17 @@ class Solver():
                 for step, batch in enumerate(self.data_util.train_loader):
                     inputs = batch['input_ids'].to(device)
                     mask = batch['attention_mask'].to(device)
-                    toxic_labels = batch['toxicity'].to(device)
-                    construct_labels = batch['constructive'].to(device)
-                    
+                    toxic_labels = batch['toxicity'].to(device).long()  
+                    construct_labels = batch['constructive'].to(device).long()  
 
-                    if (inputs.shape[0] < 32): 
-                        continue
                     optim.zero_grad()
                     toxic, construct = self.model.forward(inputs, mask)  
 
-                    
-
                     toxic_loss = loss_fn(toxic, toxic_labels)
-
-
-                    construct_labels = loss_fn(construct, construct_labels)
-                
+                    construct_loss = loss_fn(construct, construct_labels)
             
 
-                    loss = toxic_loss + construct_labels
+                    loss = toxic_loss + construct_loss
 
                 
               
