@@ -280,7 +280,7 @@ class ABSA_Tree_transfomer(nn.Module):
         
         
 
-    def forward(self, inputs, mask):
+    def forward(self, inputs, mask, return_score):
         if self.Constituent != 0: 
       
             x, Consti_hidden_states, _ = self.Consti_encoder.forward(inputs, mask)
@@ -293,9 +293,18 @@ class ABSA_Tree_transfomer(nn.Module):
 
             output = self.outputHead.forward(final_hiddenstates)
         else:
-            x, hiddenStates ,_= self.encoder.forward(inputs, mask)
+          if return_score: 
+                _, hiddenStates ,break_probs= self.encoder.forward(inputs, mask)
+                output = self.outputHead.forward(hiddenStates)
+                return output, break_probs
+          else: 
+
+                _, hiddenStates ,_= self.encoder.forward(inputs, mask)
             
-            output = self.outputHead.forward(hiddenStates)
+                output = self.outputHead.forward(hiddenStates )
+
+                return output
+        
         return output
 
 
