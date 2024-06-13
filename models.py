@@ -30,8 +30,9 @@ class SpansDetectOutput(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, encoder_output ):
+  
      
-        last_hidden_state = encoder_output[-1]
+        last_hidden_state = encoder_output
         
         last_hidden_state = self.dropout(last_hidden_state)
         span_logits = self.span_classifier(last_hidden_state)
