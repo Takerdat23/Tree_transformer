@@ -47,7 +47,7 @@ class VSMEC_Output(nn.Module):
         """
 
       
-        x = encoder_output[-1]
+        x = encoder_output[-1][: , 0, :]
       
         x= self.norm(x)
         x = self.dropout(x)
@@ -292,7 +292,7 @@ class Tree_transfomer(nn.Module):
         
         
 
-    def forward(self, inputs, mask):
+    def forward(self, inputs, mask, reutrn_score= False):
         if self.Constituent != 0: 
       
             x, Consti_hidden_states, _ = self.Consti_encoder.forward(inputs, mask)
@@ -305,9 +305,18 @@ class Tree_transfomer(nn.Module):
 
             output = self.outputHead.forward(x )
         else:
-            x, hiddenStates ,_= self.encoder.forward(inputs, mask)
-            
-            output = self.outputHead.forward(x )
+            if reutrn_score: 
+                x ,  _ ,break_probs= self.encoder.forward(inputs, mask)
+                
+                output = self.outputHead.forward(x )
+                return output, break_probs
+            else:
+                x ,  _ ,_= self.encoder.forward(inputs, mask)
+                
+                output = self.outputHead.forward(x )
+                return output
+
+           
         return output
 
 
