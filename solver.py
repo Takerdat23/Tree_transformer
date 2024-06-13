@@ -121,8 +121,7 @@ class Solver():
                 mask = batch['attention_mask'].to(device)
                 topics  = batch['topic'].to(device)
                 sentiments = batch['sentiment'].to(device)
-                if (inputs.shape[0] < 32): 
-                      continue
+                
 
       
                 topic_output, sentiment_output = self.model(inputs, mask)
@@ -305,7 +304,7 @@ class Solver():
      
         optim = torch.optim.Adam(self.model.parameters(), lr=1e-4, betas=(0.9, 0.98), eps=1e-9)
         #optim = BertAdam(self.model.parameters(), lr=1e-4)
-     
+        loss_fn = torch.nn.CrossEntropyLoss()
         
         total_loss = []
         start = time.time()
@@ -341,15 +340,11 @@ class Solver():
                 
                     # Calculate loss
 
-                    topic_probs = torch.sigmoid(topic_output)
-                
-                
-                    sentiment_probs = torch.sigmoid(sentiment_output)
+                 
             
-                    
-                    topic_loss = F.binary_cross_entropy_with_logits( topic_probs, topics )
+                    topic_loss = loss_fn( topic_output, topics)
+                    sentiment_loss = loss_fn(sentiment_output, sentiments)
 
-                    sentiment_loss = F.binary_cross_entropy_with_logits(sentiment_probs ,sentiments )
 
                     loss = topic_loss + sentiment_loss
                     
