@@ -47,7 +47,7 @@ class VSMEC_Output(nn.Module):
         """
 
       
-        x = encoder_output[-1][: , 0, :]
+        x = encoder_output[: , 0, :]
       
         x= self.norm(x)
         x = self.dropout(x)
