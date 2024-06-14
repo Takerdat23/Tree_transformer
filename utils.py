@@ -140,7 +140,7 @@ class NLIDataCollator:
         encoded_batch = [self.tokenizer.encode(hypo + " " + premise) for hypo, premise in zip(hypos  , premises)]
 
         # Get the maximum sequence length
-        max_length = 12
+        max_length = 128
 
         # Pad and truncate the sequences
         for encoded in encoded_batch:

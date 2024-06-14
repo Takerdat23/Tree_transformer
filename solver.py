@@ -215,7 +215,7 @@ class Solver():
      
         optim = torch.optim.Adam(self.model.parameters(), lr=1e-4, betas=(0.9, 0.98), eps=1e-9)
         #optim = BertAdam(self.model.parameters(), lr=1e-4)
-     
+        loss_fn = torch.nn.CrossEntropyLoss()
         
         total_loss = []
         start = time.time()
@@ -242,18 +242,17 @@ class Solver():
                     mask = batch['attention_mask'].to(device)
                     labels = batch['labels'].to(device)
 
-                    if (inputs.shape[0]< 32): 
-                        continue
+                    # if (inputs.shape[0]< 32): 
+                    #     continue
+                 
                     output = self.model.forward(inputs, mask)  # Assuming categories are not used for now
                 
                     # Calculate loss
-                
-                    output = torch.sigmoid(output)
-                    output = output.float()
-                    labels = labels.float()
+         
+                    
 
-
-                    loss = F.binary_cross_entropy(output, labels)
+                    loss = loss_fn( output, labels)
+                  
                     
                     # loss = self.model.masked_lm_loss(output, labels)
                     optim.zero_grad()

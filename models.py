@@ -47,7 +47,7 @@ class NLI_Output(nn.Module):
          Output: sentiment output 
         """
 
-        x = encoder_output[-1]
+        x = encoder_output[:, 0, :]
       
         x= self.norm(x)
         x = self.dropout(x)
@@ -207,12 +207,12 @@ class BaseEncoderLayer(nn.Module):
     def forward(self, x, mask):
   
     
-        x = self.sublayer[0](x, lambda x: self.self_attn(x, x, x,  mask= mask))
- 
+        x, attn_scores = self.sublayer[0](x, lambda x: self.self_attn(x, x, x, mask=mask, return_score=True), return_score = True)
+
         x = self.sublayer[1](x, self.feed_forward)
 
-    
-        return x
+
+        return x, attn_scores
 
 
 
@@ -221,29 +221,26 @@ class BaseEncoder(nn.Module):
         super(BaseEncoder, self).__init__()
         self.word_embed = word_embed
         self.layers = clones(layer, N)
-        self.intermidiate = IntermidiateOutput( d_model, vocab_size)
-        self.output = EncoderOutputLayer(dropout, d_model, d_model, vocab_size)
+       
         
         
 
     def forward(self, inputs, mask):
     
-        hidden_states =[]
-    
+        hidden_states = []
+        attn_scores = []
         x = self.word_embed(inputs)
 
         for layer in self.layers:
-            x = layer(x, mask)
+
+            x, scores = layer(x, mask)
+            attn_scores.append(scores)
+
             hidden_states.append(x)
-        
 
-        x= self.intermidiate(x)
-
-        x= self.output(x)
-      
-       
    
-        return x, hidden_states
+        attn_scores = torch.stack(attn_scores, dim=1)
+        return x, hidden_states, attn_scores
 
 
     def masked_lm_loss(self, out, y):
@@ -273,11 +270,20 @@ class Transfomer(nn.Module):
         
         
 
-    def forward(self, inputs, mask):
-        x, _= self.encoder.forward(inputs, mask)
+    def forward(self, inputs, mask, return_score= False):
       
-        output = self.outputHead.forward(x)
-        return output
+        if return_score: 
+            x ,  _ ,attn_score= self.encoder.forward(inputs, mask)
+            
+            output = self.outputHead.forward(x )
+            return output, attn_score
+        else:
+
+        
+            x, _, attn_score = self.encoder.forward(inputs, mask)
+      
+            output = self.outputHead.forward(x)
+            return output
     
 
 
