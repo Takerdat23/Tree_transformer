@@ -31,8 +31,8 @@ class SpansDetectOutput(nn.Module):
 
     def forward(self, encoder_output ):
   
-     
-        last_hidden_state = encoder_output
+      
+        last_hidden_state = encoder_output[-1]
         
         last_hidden_state = self.dropout(last_hidden_state)
         span_logits = self.span_classifier(last_hidden_state)
@@ -279,15 +279,14 @@ class BaseEncoderLayer(nn.Module):
         
 
     def forward(self, x, mask):
-  
-    
-        x = self.sublayer[0](x, lambda x: self.self_attn(x, x, x,  mask= mask))
- 
+     
+
+        x, attn_scores = self.sublayer[0](x, lambda x: self.self_attn(x, x, x, mask=mask, return_score=True), return_score = True)
+
         x = self.sublayer[1](x, self.feed_forward)
 
-    
-        return x
 
+        return x, attn_scores
 
 
 class BaseEncoder(nn.Module):
@@ -295,27 +294,26 @@ class BaseEncoder(nn.Module):
         super(BaseEncoder, self).__init__()
         self.word_embed = word_embed
         self.layers = clones(layer, N)
-        self.intermidiate = IntermidiateOutput( d_model, vocab_size)
-        self.output = EncoderOutputLayer(dropout, vocab_size, d_model)
+        # self.intermidiate = IntermidiateOutput( d_model, vocab_size)
+        # self.output = EncoderOutputLayer(dropout, vocab_size, d_model)
         
         
 
     def forward(self, inputs, mask):
-    
-        hidden_states =[]
-    
+
+        hidden_states = []
+        attn_scores = []
         x = self.word_embed(inputs)
 
         for layer in self.layers:
-            x = layer(x, mask)
-            hidden_states.append(x)
-        
 
-        x= self.intermidiate(x)
-      
-        x = self.output(x)
-   
-        return x, hidden_states
+            x, scores = layer(x, mask)
+            attn_scores.append(scores)
+
+            hidden_states.append(x)
+
+        # x = self.intermidiate(x)
+        return x, hidden_states, attn_scores
 
 
     def masked_lm_loss(self, out, y):
@@ -344,12 +342,23 @@ class Transfomer(nn.Module):
         
         
 
-    def forward(self, inputs, mask):
-        x, _= self.encoder.forward(inputs, mask)
-      
-        output = self.outputHead.forward(x)
-        return output
-    
+    def forward(self, inputs, mask, return_score = False):
+        if return_score: 
+            _, hiddenStates, attn_scores = self.encoder.forward(inputs, mask)
+
+            output = self.outputHead.forward(hiddenStates)
+
+
+            return output, attn_scores
+        else:
+            _, hiddenStates, attn_scores = self.encoder.forward(inputs, mask)
+
+           
+
+            # print("Atten score" , len(attn_scores))
+
+            output = self.outputHead.forward(hiddenStates)
+            return output
 
 class LSTM_Attention(nn.Module):
     def __init__(self, vocab_size ,  input_size = 256, hidden_size= 256, num_layers=6, bidirectional=False, dropout = 0.1, no_cuda = False):

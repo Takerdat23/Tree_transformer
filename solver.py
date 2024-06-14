@@ -45,7 +45,7 @@ class Solver():
                                           d_ff= modelConfig['d_ff'], h= modelConfig['heads'],   dropout = modelConfig['dropout'], no_cuda=args.no_cuda)
         elif args.strategy == 'base' : 
 
-            self.model = ABSA_transfomer( vocab_size= self.vocab_size, N = modelConfig['N_layer'], d_model= modelConfig['d_model'], 
+            self.model = Transfomer( vocab_size= self.vocab_size, N = modelConfig['N_layer'], d_model= modelConfig['d_model'], 
                                           d_ff= modelConfig['d_ff'], h= modelConfig['heads'] ,  dropout = modelConfig['dropout'], no_cuda=args.no_cuda)
         elif args.strategy == 'lstm' : 
 
@@ -230,8 +230,8 @@ class Solver():
                     attention_mask = batch['attention_mask'].to(device)
                     spans = batch['spans'].float().to(device)
 
-                    if (input_ids.shape[0] < 32): 
-                        continue
+                    # if (input_ids.shape[0] < 32): 
+                    #     continue
 
                     
                     span_logits = self.model(input_ids, attention_mask)
