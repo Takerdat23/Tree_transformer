@@ -327,11 +327,11 @@ class Solver():
                 for step, batch in enumerate(self.data_util.train_loader):
                     inputs = batch['input_ids'].to(device)
                     mask = batch['attention_mask'].to(device)
-                    topics  = batch['topic'].to(device)
-                    sentiments = batch['sentiment'].to(device)
+                    topics  = batch['topic'].to(device).long()
+                    sentiments = batch['sentiment'].to(device).long()
 
-                    if (inputs.shape[0] < 32): 
-                        continue
+                    # if (inputs.shape[0] < 32): 
+                    #     continue
                     
                     topic_output, sentiment_output = self.model(inputs, mask)
 
