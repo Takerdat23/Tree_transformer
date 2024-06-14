@@ -236,8 +236,8 @@ class Solver():
                     mask = batch['attention_mask'].to(device)
                     labels = batch['labels'].to(device)
 
-                    if (inputs.shape[0] < 32): 
-                        continue
+                    # if (inputs.shape[0] < 32): 
+                    #     continue
 
                   
                     optim.zero_grad()

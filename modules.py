@@ -54,9 +54,17 @@ class SublayerConnection(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
 
-    def forward(self, x, sublayer):
+    def forward(self, x, sublayer, return_score= False):
         "Apply residual connection to any sublayer with the same size."
-        return x + self.dropout(sublayer(self.norm(x)))
+
+
+        norm_x = self.norm(x)
+        if return_score:
+            output, attn_scores = sublayer(norm_x)
+            return x + self.dropout(output), attn_scores
+        else:
+            output = sublayer(norm_x)
+            return x + self.dropout(output)
 
 
 def gelu(x):

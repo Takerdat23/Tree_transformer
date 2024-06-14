@@ -52,7 +52,7 @@ class MultiHeadedAttention(nn.Module):
         self.dropout = nn.Dropout(p=dropout)
         self.no_cuda = no_cuda
         
-    def forward(self, query, key, value, group_prob=None, mask=None):
+    def forward(self, query, key, value, group_prob=None, mask=None, return_score= False):
         if mask is not None:
             # Same mask applied to all h heads.
             mask = mask.unsqueeze(1)
@@ -71,7 +71,12 @@ class MultiHeadedAttention(nn.Module):
         # 3) "Concat" using a view and apply a final linear. 
         x = x.transpose(1, 2).contiguous() \
              .view(nbatches, -1, self.h * self.d_k)
-        return self.linears[-1](x)
+        if return_score: 
+
+            return self.linears[-1](x), self.attn
+        else: 
+
+            return self.linears[-1](x)
 
 
 class GroupAttention(nn.Module):
