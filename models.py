@@ -48,7 +48,7 @@ class Topic_SA_Output(nn.Module):
          categories: aspect, categories  
          Output: sentiment output 
         """
-        pooled_output = model_output[-1]
+        pooled_output = model_output[-1][:, 0 , :]
 
         topic = self.Topicdense(pooled_output )
 
