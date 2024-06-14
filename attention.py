@@ -73,7 +73,12 @@ class MultiHeadedAttention(nn.Module):
              .view(nbatches, -1, self.h * self.d_k)
         
  
-        return self.linears[-1](x)
+        if return_score: 
+
+            return self.linears[-1](x), self.attn
+        else: 
+
+            return self.linears[-1](x)
 
 
 class GroupAttention(nn.Module):

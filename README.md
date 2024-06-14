@@ -4,7 +4,7 @@
 tree base PretrainBERT PretrainBART PhoBert
 
 # Training 
-python main.py -train -strategy tree -seq_length 128 -batch_size 10 -model_dir ./Model/UIT-ViCTSD -train_path ./data/UIT-ViCTSD/Train.csv -valid_path ./data/UIT-ViCTSD/Dev.csv -test_path ./data/UIT-ViCTSD/Test.csv -epoch 5 -wandb_api [your wandb key]
+python main.py -train -strategy base -seq_length 128 -batch_size 10 -model_dir ./Model/UIT-ViCTSD -train_path ./data/UIT-ViCTSD/Train.csv -valid_path ./data/UIT-ViCTSD/Dev.csv -test_path ./data/UIT-ViCTSD/Test.csv -epoch 5 -wandb_api [your wandb key]
 
 
 lstm

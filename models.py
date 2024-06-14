@@ -498,14 +498,14 @@ class BaseEncoderLayer(nn.Module):
         
 
     def forward(self, x, mask):
-  
-    
-        x = self.sublayer[0](x, lambda x: self.self_attn(x, x, x,  mask= mask))
- 
+     
+
+        x, attn_scores = self.sublayer[0](x, lambda x: self.self_attn(x, x, x, mask=mask, return_score=True), return_score = True)
+
         x = self.sublayer[1](x, self.feed_forward)
 
-    
-        return x
+
+        return x, attn_scores
 
 
 
@@ -514,27 +514,26 @@ class BaseEncoder(nn.Module):
         super(BaseEncoder, self).__init__()
         self.word_embed = word_embed
         self.layers = clones(layer, N)
-        self.intermidiate = IntermidiateOutput( d_model, d_model* 4)
-        self.output = EncoderOutputLayer(dropout, d_model* 4, d_model)
+        # self.intermidiate = IntermidiateOutput( d_model, d_model* 4)
+        # self.output = EncoderOutputLayer(dropout, d_model* 4, d_model)
         
         
 
     def forward(self, inputs, mask):
-    
-        hidden_states =[]
-    
+
+        hidden_states = []
+        attn_scores = []
         x = self.word_embed(inputs)
 
         for layer in self.layers:
-            x = layer(x, mask)
-            hidden_states.append(x)
-        
 
-        x= self.intermidiate(x)
-        x= self.output(x)
-       
-   
-        return x, hidden_states
+            x, scores = layer(x, mask)
+            attn_scores.append(scores)
+
+            hidden_states.append(x)
+
+        # x = self.intermidiate(x)
+        return x, hidden_states, attn_scores
 
 
     def masked_lm_loss(self, out, y):
@@ -564,12 +563,24 @@ class Transfomer(nn.Module):
         
         
 
-    def forward(self, inputs, mask):
-        _, hiddenStates= self.encoder.forward(inputs, mask)
+    def forward(self, inputs, mask, return_score = False):
+
+        if return_score: 
+            _, hiddenStates, attn_scores = self.encoder.forward(inputs, mask)
+
+            toxic, construct = self.outputHead.forward(hiddenStates)
+
+
+            return toxic, construct, attn_scores
+        else:
+            _, hiddenStates, attn_scores = self.encoder.forward(inputs, mask)
+
+            # print("Atten score" , len(attn_scores))
+
+            toxic, construct = self.outputHead.forward(hiddenStates)
+            return toxic, construct
+
       
-        toxic, construct = self.outputHead.forward(hiddenStates)
-        return toxic, construct
-    
 
 
 class Pretrained_transformer(nn.Module): 
