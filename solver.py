@@ -89,8 +89,11 @@ class Solver():
 
     
     def evaluate(self):
-        device = "cuda" if not self.args.no_cuda else "cpu"
-        
+        if not self.args.no_cuda:
+            device = "cuda"
+        else:
+            device = "cpu"
+
         self.model.to(device)
         self.model.eval()
 
@@ -102,52 +105,46 @@ class Solver():
         with torch.no_grad():
             epoch_progress = tqdm(total=len(self.data_util.val_loader), position=0)
             for step, batch in enumerate(self.data_util.val_loader):
-                if step == 10 : 
-                    break
                 inputs = batch['input_ids'].to(device)
                 mask = batch['attention_mask'].to(device)
                 toxic_labels = batch['toxicity'].to(device)
                 construct_labels = batch['constructive'].to(device)
 
-                toxic, construct = self.model(inputs, mask)
-                toxic = toxic.cpu().numpy()
-                construct = construct.cpu().numpy()
-
-                # print("toxic", toxic.shape)
-                # print("toxic_labels", toxic_labels.shape)
-                # print("construct", construct.shape)
-                # print("construct_labels", construct_labels.shape)
-
+                toxic, construct  = self.model(inputs, mask)
+                toxic = toxic.cpu()
+                construct   = construct.cpu()
 
                 # Extracting the index of the maximum score from each prediction
                 toxic_predictions_indices = np.argmax(toxic, axis=-1)
                 constructive_predictions_indices = np.argmax(construct, axis=-1)
 
-                toxic_ground_truth_indices = np.argmax( toxic_labels, axis=-1) 
-                constructive_ground_truth_indices = np.argmax( construct_labels, axis=-1) 
+                toxic_ground_truth_indices = np.argmax(toxic_labels.cpu().numpy(), axis=-1)
+                constructive_ground_truth_indices = np.argmax(construct_labels.cpu().numpy(), axis=-1)
 
-                toxic_label = ['Non-toxic', 'Toxic']
-                constructive_label = ['Non-constructive', 'Constructive']
+                toxic_label = ['No constructive', 'Constructive']
+                constructive_label = ['No constructive', 'Constructive']
+
+
+  
 
                 all_toxic_predictions.extend(toxic_predictions_indices)
                 all_toxic_ground_truths.extend(toxic_ground_truth_indices)
 
                 all_constructive_predictions.extend(constructive_predictions_indices)
                 all_constructive_ground_truths.extend(constructive_ground_truth_indices)
-                
                 epoch_progress.update(1)
-            epoch_progress.close()
+        epoch_progress.close()
 
-            # Generate classification reports
-            report_toxic = classification_report(all_toxic_ground_truths, all_toxic_predictions, target_names=toxic_label)
-            print("Aspect", report_toxic)
-            toxic_f1 = f1_score(all_toxic_ground_truths, all_toxic_predictions, average='weighted')
+        # Generate classification reports
+        report_toxic = classification_report(all_toxic_ground_truths, all_toxic_predictions, target_names=toxic_label)
+        print("Aspect" , report_toxic)
+        toxic_f1 = f1_score(all_toxic_ground_truths, all_toxic_predictions, average='weighted')
 
-            report_constructive = classification_report(all_constructive_ground_truths, all_constructive_predictions, target_names=constructive_label)
-            print("Sentiment", report_constructive)
-            constructive_f1 = f1_score(all_constructive_ground_truths, all_constructive_predictions, average='weighted')
+        report_constructive = classification_report(all_constructive_ground_truths, all_constructive_predictions, target_names=constructive_label)
+        print("Sentiment" , report_constructive )
+        constructive_f1 = f1_score(all_constructive_ground_truths, all_constructive_predictions, average='weighted')
 
-            return toxic_f1, constructive_f1
+        return toxic_f1  , constructive_f1
 
 
     def test(self):
