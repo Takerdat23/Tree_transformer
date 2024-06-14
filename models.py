@@ -45,7 +45,7 @@ class VSMEC_Output(nn.Module):
          categories: aspect, categories  
          Output: sentiment output 
         """
-
+     
       
         x = encoder_output[-1][: , 0, :]
       
@@ -261,7 +261,7 @@ class BaseEncoder_ForConsti(nn.Module):
     
 
 class Tree_transfomer(nn.Module): 
-    def __init__(self, vocab_size, N=12, No_consti = 1, d_model=768, d_ff=2048, h=12, dropout=0.1, no_cuda= False):
+    def __init__(self, vocab_size, N=12, No_consti = 0, d_model=768, d_ff=2048, h=12, dropout=0.1, no_cuda= False):
         super(Tree_transfomer, self).__init__()
         "Helper: Construct a model from hyperparameters."
         self.no_cuda=  no_cuda
@@ -303,7 +303,7 @@ class Tree_transfomer(nn.Module):
 
             final_hiddenstates  = Consti_hidden_states + hiddenStates
 
-            output = self.outputHead.forward(x )
+            output = self.outputHead.forward(final_hiddenstates)
         else:
             if reutrn_score: 
                 x ,  hidden_states ,break_probs= self.encoder.forward(inputs, mask)
